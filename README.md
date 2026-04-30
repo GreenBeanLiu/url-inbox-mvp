@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# URL Inbox MVP
 
-## Getting Started
+A local-first MVP for saving URLs now and actually finding them later.
 
-First, run the development server:
+## Scope
+
+- Import normal web pages
+- Import `x.com` / `twitter.com` status links
+- Normalize everything into one inbox
+- Store data locally in SQLite
+- Search and filter in the web UI
+- Update review status: `inbox`, `later`, `done`, `archived`
+
+## Tech
+
+- Next.js App Router
+- React
+- Tailwind CSS
+- Prisma + SQLite (`prisma/dev.db`)
+- `cheerio` for basic web metadata extraction
+- TikHub API for tweet hydration
+
+## Getting started
 
 ```bash
+cd ~/Works/url-inbox-mvp
+cp .env.example .env
+cp .env.example .env.local
+npm run prisma:generate
+npm run prisma:migrate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## TikHub setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Add your token to `.env.local`:
 
-## Learn More
+```bash
+TIKHUB_API_TOKEN=your_token_here
+TIKHUB_API_BASE_URL=https://api.tikhub.io
+```
 
-To learn more about Next.js, take a look at the following resources:
+Without the token, tweet links will still be stored, but tweet detail fetch will remain in placeholder/failed mode so you can wire the key later.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- SQLite file: `prisma/dev.db`
+- Prisma schema: `prisma/schema.prisma`
 
-## Deploy on Vercel
+## API
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### `GET /api/items`
+Return all items.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### `POST /api/items`
+Import a URL.
+
+Request body:
+
+```json
+{
+  "url": "https://x.com/elonmusk/status/1808168603721650364",
+  "note": "Check this later"
+}
+```
+
+### `GET /api/items/:id`
+Return one item.
+
+### `PATCH /api/items/:id`
+Update item status or note.
+
+Request body:
+
+```json
+{
+  "status": "later",
+  "note": "Worth turning into a summary"
+}
+```
+
+## Current limitations
+
+- No auth or multi-user support
+- No browser extension yet
+- No background queue yet; imports happen inline
+- Web extraction is metadata-first, not full article readability
+- Tweet normalization is intentionally defensive because TikHub payload shape may vary
+
+## Suggested next steps
+
+1. Add background jobs for imports/refetch
+2. Add tags and item detail page
+3. Add browser extension / mobile share target
+4. Add digest and resurfacing workflow
+5. Move from SQLite to Postgres when multi-user support is needed
