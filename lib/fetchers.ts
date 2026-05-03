@@ -251,12 +251,28 @@ async function fetchTweetItem(input: {
 
 function normalizeTweetPayload(payload: Record<string, unknown>, tweetId: string) {
   const data = unwrapData(payload);
-  const text =
+
+  const rawTweetText =
     readString(data, ["full_text"]) ||
     readString(data, ["text"]) ||
     readString(data, ["tweet", "full_text"]) ||
     readString(data, ["tweet", "text"]) ||
     "";
+
+  const articleTitle = readString(data, ["article", "title"]);
+  const articleFullText = readString(data, ["article", "full_text"]);
+  const articlePreviewText = readString(data, ["article", "preview_text"]);
+  const displayText = readString(data, ["display_text"]);
+  const expandedUrl =
+    readString(data, ["urls", 0, "expanded_url"]) ||
+    readString(data, ["entities", "urls", 0, "expanded_url"]) ||
+    readString(data, ["card", "url"]);
+
+  const text =
+    articleFullText ||
+    articlePreviewText ||
+    pickUsefulTweetText(rawTweetText, expandedUrl, displayText) ||
+    rawTweetText;
 
   const authorName =
     readString(data, ["author", "name"]) ||
@@ -276,13 +292,15 @@ function normalizeTweetPayload(payload: Record<string, unknown>, tweetId: string
     null;
 
   const coverImageUrl =
+    readString(data, ["article", "cover_media"]) ||
+    readString(data, ["card", "media", "image_url"]) ||
     readString(data, ["media", 0, "media_url_https"]) ||
     readString(data, ["entities", "media", 0, "media_url_https"]) ||
     null;
 
   const media = readMedia(data);
-  const summary = summarizeText(text) || `Saved tweet ${tweetId}`;
-  const title = authorHandle ? `@${authorHandle}` : `Tweet ${tweetId}`;
+  const summary = summarizeText(text) || articleTitle || `Saved tweet ${tweetId}`;
+  const title = articleTitle || (authorHandle ? `@${authorHandle}` : `Tweet ${tweetId}`);
 
   return {
     title,
@@ -394,6 +412,27 @@ function readUnknown(value: unknown, path: Array<string | number>): unknown {
   }
 
   return current;
+}
+
+function pickUsefulTweetText(
+  rawText: string,
+  expandedUrl: string | null,
+  displayText: string | null,
+) {
+  const normalized = rawText.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const lowered = normalized.toLowerCase();
+  const looksLikeOnlyShortUrl =
+    /^https?:\/\/t\.co\/[a-z0-9]+$/i.test(normalized) ||
+    normalized === expandedUrl ||
+    normalized === displayText ||
+    lowered.startsWith("https://t.co/");
+
+  return looksLikeOnlyShortUrl ? null : normalized;
 }
 
 function buildTextPreview($: cheerio.CheerioAPI) {
