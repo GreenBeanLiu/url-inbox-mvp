@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { buildItemFromUrl } from "@/lib/fetchers";
 import { findDuplicate, listItems, upsertItem } from "@/lib/repo";
 import { parseSource } from "@/lib/source";
@@ -31,15 +32,14 @@ export async function POST(request: Request) {
     });
 
     if (duplicate) {
-      const refreshed = await buildItemFromUrl({
-        id: duplicate.id,
-        url: parsed.sourceUrl,
-        note: body.note || duplicate.note || undefined,
-        existingCreatedAt: duplicate.createdAt,
-      });
-
-      const saved = await upsertItem(refreshed);
-      return Response.json({ item: saved, duplicate: true });
+      return Response.json(
+        {
+          item: duplicate,
+          duplicate: true,
+          message: "URL already saved.",
+        },
+        { status: 200 },
+      );
     }
 
     const item = await buildItemFromUrl({
@@ -48,8 +48,31 @@ export async function POST(request: Request) {
       note: body.note,
     });
 
-    const saved = await upsertItem(item);
-    return Response.json({ item: saved, duplicate: false }, { status: 201 });
+    try {
+      const saved = await upsertItem(item);
+      return Response.json({ item: saved, duplicate: false }, { status: 201 });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        const existing = await findDuplicate({
+          sourceType: parsed.sourceType,
+          canonicalUrl: parsed.canonicalUrl,
+          externalId: parsed.externalId,
+        });
+
+        if (existing) {
+          return Response.json(
+            {
+              item: existing,
+              duplicate: true,
+              message: "URL already saved.",
+            },
+            { status: 200 },
+          );
+        }
+      }
+
+      throw error;
+    }
   } catch (error) {
     return Response.json(
       {
@@ -58,4 +81,11 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
 }

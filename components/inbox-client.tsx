@@ -26,6 +26,7 @@ export function InboxClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     setTagFilter(initialTag || "");
@@ -93,6 +94,7 @@ export function InboxClient({
 
     setIsSubmitting(true);
     setError(null);
+    setNotice(null);
 
     try {
       const response = await fetch("/api/items", {
@@ -108,6 +110,8 @@ export function InboxClient({
 
       const payload = (await response.json()) as {
         error?: string;
+        message?: string;
+        duplicate?: boolean;
         item?: SavedItem;
       };
 
@@ -119,6 +123,13 @@ export function InboxClient({
         const next = current.filter((item) => item.id !== payload.item?.id);
         return [payload.item!, ...next];
       });
+
+      if (payload.duplicate) {
+        setNotice(payload.message || "URL already saved.");
+      } else {
+        setNotice("Saved.");
+      }
+
       setUrl("");
       setNote("");
     } catch (submissionError) {
@@ -134,6 +145,7 @@ export function InboxClient({
 
   async function updateStatus(id: string, status: ItemStatus) {
     setError(null);
+    setNotice(null);
 
     const response = await fetch(`/api/items/${id}`, {
       method: "PATCH",
@@ -160,6 +172,7 @@ export function InboxClient({
 
   async function analyzeItem(id: string) {
     setError(null);
+    setNotice(null);
     setAnalyzingId(id);
 
     try {
@@ -220,13 +233,24 @@ export function InboxClient({
             />
           </label>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
-          >
-            {isSubmitting ? "Saving..." : "Save URL"}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
+            >
+              Save URL
+            </button>
+
+            <div className="min-h-5 text-sm text-zinc-500">
+              {isSubmitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-200 border-t-sky-600" />
+                  Saving...
+                </span>
+              ) : null}
+            </div>
+          </div>
         </form>
 
         <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
@@ -236,6 +260,12 @@ export function InboxClient({
             <code> OPENAI_API_KEY</code> and optional <code>AI_MODEL</code>.
           </p>
         </div>
+
+        {notice ? (
+          <p className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700">
+            {notice}
+          </p>
+        ) : null}
 
         {error ? (
           <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
