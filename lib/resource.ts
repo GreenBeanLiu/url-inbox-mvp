@@ -48,6 +48,18 @@ const WORKSPACE_HINTS = [
   "sheet",
   "database",
   "folder",
+  "工作区",
+  "画布",
+  "白板",
+  "协作",
+  "流程图",
+  "思维导图",
+  "脑图",
+  "任务推进",
+  "知识整理",
+  "项目",
+  "文档",
+  "看板",
 ];
 
 const TOOL_HINTS = [
@@ -66,6 +78,17 @@ const TOOL_HINTS = [
   "plugin",
   "extension",
   "automation",
+  "工具",
+  "平台",
+  "产品",
+  "应用",
+  "软件",
+  "服务",
+  "生成",
+  "编辑",
+  "管理",
+  "助手",
+  "工作流",
 ];
 
 const ARTICLE_PATH_HINTS = [
@@ -148,6 +171,16 @@ export function classifyWebResource(input: {
   }
 
   if (
+    (workspaceMatches.length > 0 || toolMatches.length > 0) &&
+    contentText.length >= 900
+  ) {
+    if (articleScore > 0) {
+      articleScore -= 1;
+    }
+    signals.push("resource signals outweigh pure reading page cues");
+  }
+
+  if (
     title.includes("read time") ||
     title.includes("min read") ||
     description.includes("newsletter")
@@ -162,6 +195,10 @@ export function classifyWebResource(input: {
     kind = "workspace";
   } else if (toolScore >= 3) {
     kind = "tool";
+  } else if (workspaceScore >= 2 && workspaceScore + toolScore >= articleScore + 1) {
+    kind = "workspace";
+  } else if (toolScore >= 2 && toolScore + workspaceScore >= articleScore + 1) {
+    kind = workspaceScore > toolScore ? "workspace" : "tool";
   } else if (articleScore === 0 && (workspaceScore > 0 || toolScore > 0)) {
     kind = workspaceScore >= toolScore ? "workspace" : "tool";
   }
