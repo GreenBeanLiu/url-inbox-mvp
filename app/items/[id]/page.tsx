@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { findItemById } from "@/lib/repo";
+import { ExpandableContent } from "@/components/expandable-content";
 import { readAnalysis, readAnalyzedAt } from "@/lib/item-analysis";
+import { findItemById } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,11 @@ export default async function ItemDetailPage({
 
   const analysis = readAnalysis(item);
   const analyzedAt = readAnalyzedAt(item);
-  const previewText =
-    item.sourceType === "tweet"
-      ? item.contentText || item.summary
-      : item.summary || item.contentText;
+  const contentText = item.contentText?.trim() || null;
+  const summaryText = item.summary?.trim() || null;
+  const fullContent = contentText || summaryText;
+  const showSummary =
+    Boolean(summaryText) && Boolean(contentText) && summaryText !== contentText;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -132,17 +134,32 @@ export default async function ItemDetailPage({
             </section>
           ) : null}
 
+          {showSummary ? (
+            <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold text-zinc-950">Summary</h2>
+                <span className="text-xs uppercase tracking-wide text-zinc-400">
+                  quick preview
+                </span>
+              </div>
+
+              <p className="mt-4 max-w-3xl whitespace-pre-wrap text-[15px] leading-8 text-zinc-700 sm:text-base">
+                {summaryText}
+              </p>
+            </section>
+          ) : null}
+
           <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold text-zinc-950">Original content</h2>
               <span className="text-xs uppercase tracking-wide text-zinc-400">
-                readable view
+                {contentText ? "full extracted text" : "saved summary"}
               </span>
             </div>
 
-            {previewText ? (
-              <div className="mt-5 max-w-3xl whitespace-pre-wrap break-words text-[15px] leading-8 text-zinc-800 sm:text-base">
-                {previewText}
+            {fullContent ? (
+              <div className="mt-5">
+                <ExpandableContent text={fullContent} />
               </div>
             ) : (
               <p className="mt-4 text-sm text-zinc-500">No readable content yet.</p>
