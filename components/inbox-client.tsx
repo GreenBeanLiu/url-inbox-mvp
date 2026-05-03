@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SavedItem, ItemStatus } from "@/lib/types";
+import { SavedItem, ItemAnalysis, ItemStatus } from "@/lib/types";
 
 const statuses: ItemStatus[] = ["inbox", "later", "done", "archived"];
 
@@ -19,6 +19,7 @@ export function InboxClient({
   );
   const [statusFilter, setStatusFilter] = useState<"all" | ItemStatus>("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const filteredItems = useMemo(() => {
@@ -46,6 +47,8 @@ export function InboxClient({
         item.authorHandle,
         item.siteName,
         item.sourceUrl,
+        readAnalysis(item)?.summary,
+        ...(readAnalysis(item)?.tags || []),
       ]
         .filter(Boolean)
         .join(" ")
@@ -128,6 +131,38 @@ export function InboxClient({
     );
   }
 
+  async function analyzeItem(id: string) {
+    setError(null);
+    setAnalyzingId(id);
+
+    try {
+      const response = await fetch(`/api/items/${id}/analyze`, {
+        method: "POST",
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+        item?: SavedItem;
+      };
+
+      if (!response.ok || !payload.item) {
+        throw new Error(payload.error || "AI analysis failed.");
+      }
+
+      setItems((current) =>
+        current.map((item) => (item.id === id ? payload.item! : item)),
+      );
+    } catch (analysisError) {
+      setError(
+        analysisError instanceof Error
+          ? analysisError.message
+          : "Unknown AI analysis error",
+      );
+    } finally {
+      setAnalyzingId(null);
+    }
+  }
+
   return (
     <div className="grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -168,11 +203,10 @@ export function InboxClient({
         </form>
 
         <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          <p className="font-medium text-zinc-950">TikHub</p>
+          <p className="font-medium text-zinc-950">TikHub + AI</p>
           <p className="mt-1 leading-6">
-            For tweet hydration, add <code>TIKHUB_API_TOKEN</code> to
-            <code> .env.local</code>. Without it, tweet links are still stored,
-            but detail fetching will stay in failed placeholder mode.
+            Tweet hydration uses <code>TIKHUB_API_TOKEN</code>. AI analysis uses
+            <code> OPENAI_API_KEY</code> and optional <code>AI_MODEL</code>.
           </p>
         </div>
 
@@ -241,6 +275,7 @@ export function InboxClient({
           ) : (
             filteredItems.map((item) => {
               const previewText = buildPreviewText(item);
+              const analysis = readAnalysis(item);
 
               return (
                 <article
@@ -263,6 +298,11 @@ export function InboxClient({
                     >
                       {item.fetchStatus}
                     </span>
+                    {analysis ? (
+                      <span className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-700">
+                        analyzed
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="mt-3 flex flex-col gap-2">
@@ -296,9 +336,48 @@ export function InboxClient({
                     {item.fetchError ? (
                       <p className="text-sm text-amber-700">{item.fetchError}</p>
                     ) : null}
+
+                    {analysis ? (
+                      <div className="mt-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-4 text-sm text-zinc-800">
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="font-semibold text-zinc-950">AI analysis</h3>
+                          <span className="text-xs text-zinc-500">
+                            confidence {(analysis.confidence * 100).toFixed(0)}%
+                          </span>
+                        </div>
+
+                        <p className="mt-2 leading-6">{analysis.summary}</p>
+
+                        <SectionList title="Key points" items={analysis.keyPoints} />
+                        <SectionList title="Insights" items={analysis.insights} />
+                        <SectionList title="Action items" items={analysis.actionItems} />
+
+                        {analysis.tags.length > 0 ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {analysis.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full bg-white px-2.5 py-1 text-xs text-violet-700 ring-1 ring-violet-200"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => analyzeItem(item.id)}
+                      disabled={analyzingId === item.id || (!item.contentText && !item.summary)}
+                      className="rounded-full border border-violet-300 px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:border-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {analyzingId === item.id ? "Analyzing..." : analysis ? "Re-analyze" : "Analyze"}
+                    </button>
+
                     {statuses.map((status) => (
                       <button
                         key={status}
@@ -340,4 +419,42 @@ function buildPreviewText(item: SavedItem) {
   }
 
   return trimmed.length > 700 ? `${trimmed.slice(0, 700)}…` : trimmed;
+}
+
+function readAnalysis(item: SavedItem): ItemAnalysis | null {
+  const maybeAnalysis = item.meta?.aiAnalysis;
+  if (!maybeAnalysis || typeof maybeAnalysis !== "object") {
+    return null;
+  }
+
+  const analysis = maybeAnalysis as Partial<ItemAnalysis>;
+  if (
+    typeof analysis.summary !== "string" ||
+    !Array.isArray(analysis.keyPoints) ||
+    !Array.isArray(analysis.insights) ||
+    !Array.isArray(analysis.actionItems) ||
+    !Array.isArray(analysis.tags) ||
+    typeof analysis.confidence !== "number"
+  ) {
+    return null;
+  }
+
+  return analysis as ItemAnalysis;
+}
+
+function SectionList({ title, items }: { title: string; items: string[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3">
+      <h4 className="font-medium text-zinc-950">{title}</h4>
+      <ul className="mt-1 list-disc space-y-1 pl-5 text-zinc-700">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
 }

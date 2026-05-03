@@ -4,6 +4,15 @@ export type ItemStatus = "inbox" | "later" | "done" | "archived";
 
 export type FetchStatus = "pending" | "success" | "failed";
 
+export interface ItemAnalysis {
+  summary: string;
+  keyPoints: string[];
+  insights: string[];
+  actionItems: string[];
+  tags: string[];
+  confidence: number;
+}
+
 export interface SavedItem {
   id: string;
   sourceType: SourceType;

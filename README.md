@@ -10,6 +10,7 @@ A local-first MVP for saving URLs now and actually finding them later.
 - Store data in Postgres via Prisma
 - Search and filter in the web UI
 - Update review status: `inbox`, `later`, `done`, `archived`
+- Run AI analysis on saved items and store structured results
 
 ## Tech
 
@@ -19,6 +20,7 @@ A local-first MVP for saving URLs now and actually finding them later.
 - Prisma + Postgres (`DATABASE_URL`)
 - `cheerio` for basic web metadata extraction
 - TikHub API for tweet hydration
+- Vercel AI SDK for structured content analysis
 
 ## Getting started
 
@@ -43,6 +45,23 @@ TIKHUB_API_BASE_URL=https://api.tikhub.io
 ```
 
 Without the token, tweet links will still be stored, but tweet detail fetch will remain in placeholder/failed mode so you can wire the key later.
+
+## AI analysis setup
+
+Add your model config to `.env.local`:
+
+```bash
+OPENAI_API_KEY=your_key_here
+AI_MODEL=gpt-4o-mini
+```
+
+Optional for OpenAI-compatible providers:
+
+```bash
+OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
+```
+
+Analysis results are stored back onto the item in `meta.aiAnalysis`.
 
 ## Database
 
@@ -82,17 +101,21 @@ Request body:
 }
 ```
 
+### `POST /api/items/:id/analyze`
+Run AI analysis for one item and persist the structured result into `meta.aiAnalysis`.
+
 ## Current limitations
 
 - No auth or multi-user support
 - No browser extension yet
-- No background queue yet; imports happen inline
+- No background queue yet; imports and AI analysis happen inline
 - Web extraction is metadata-first, not full article readability
 - Tweet normalization is intentionally defensive because TikHub payload shape may vary
+- AI analysis currently requires a manual button click per item
 
 ## Suggested next steps
 
-1. Add background jobs for imports/refetch
+1. Add background jobs for imports/refetch/analysis
 2. Add tags and item detail page
 3. Add browser extension / mobile share target
 4. Add digest and resurfacing workflow
