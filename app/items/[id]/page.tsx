@@ -19,12 +19,13 @@ export default async function ItemDetailPage({
 
   const analysis = readAnalysis(item);
   const analyzedAt = readAnalyzedAt(item);
-  const previewText = item.sourceType === "tweet"
-    ? item.contentText || item.summary
-    : item.summary || item.contentText;
+  const previewText =
+    item.sourceType === "tweet"
+      ? item.contentText || item.summary
+      : item.summary || item.contentText;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/"
@@ -33,17 +34,33 @@ export default async function ItemDetailPage({
           ← Back to inbox
         </Link>
 
-        <a
-          href={item.sourceUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-400"
-        >
-          Open source
-        </a>
+        <div className="flex flex-wrap items-center gap-3">
+          {analysis?.tags?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {analysis.tags.map((tag) => (
+                <Link
+                  key={tag}
+                  href={`/?tag=${encodeURIComponent(tag)}`}
+                  className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200 transition hover:bg-violet-100"
+                >
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+
+          <a
+            href={item.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-400"
+          >
+            Open source
+          </a>
+        </div>
       </div>
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
           <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
             {item.sourceType}
@@ -67,102 +84,127 @@ export default async function ItemDetailPage({
           ) : null}
         </div>
 
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-zinc-950">
+        <h1 className="mt-4 max-w-4xl text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl">
           {item.title || item.sourceUrl}
         </h1>
 
-        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-500">
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-500">
           <span>
             {item.authorHandle
               ? `@${item.authorHandle}`
               : item.authorName || item.siteName || "Unknown source"}
           </span>
-          {item.publishedAt ? <span>Published {formatDateTime(item.publishedAt)}</span> : null}
+          {item.publishedAt ? (
+            <span>Published {formatDateTime(item.publishedAt)}</span>
+          ) : null}
           <span>Saved {formatDateTime(item.createdAt)}</span>
           {analyzedAt ? <span>AI analyzed {formatDateTime(analyzedAt)}</span> : null}
         </div>
-
-        {item.note ? (
-          <div className="mt-5 rounded-2xl bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
-            <p className="font-medium text-zinc-950">Your note</p>
-            <p className="mt-1 whitespace-pre-wrap leading-6">{item.note}</p>
-          </div>
-        ) : null}
       </section>
 
-      {analysis ? (
-        <section className="rounded-3xl border border-violet-200 bg-violet-50/70 p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-semibold text-zinc-950">AI analysis</h2>
-              {analyzedAt ? (
-                <p className="mt-1 text-sm text-zinc-500">
-                  Last analyzed {formatDateTime(analyzedAt)}
-                </p>
-              ) : null}
-            </div>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-violet-700 ring-1 ring-violet-200">
-              confidence {(analysis.confidence * 100).toFixed(0)}%
-            </span>
-          </div>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-6">
+          {analysis ? (
+            <section className="rounded-3xl border border-violet-200 bg-violet-50/70 p-6 shadow-sm sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-zinc-950">
+                    AI summary
+                  </h2>
+                  {analyzedAt ? (
+                    <p className="mt-1 text-sm text-zinc-500">
+                      Last analyzed {formatDateTime(analyzedAt)}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-violet-700 ring-1 ring-violet-200">
+                  confidence {(analysis.confidence * 100).toFixed(0)}%
+                </span>
+              </div>
 
-          <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-zinc-800">
-            {analysis.summary}
-          </p>
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-zinc-800 sm:text-base">
+                {analysis.summary}
+              </p>
 
-          <SectionList title="Key points" items={analysis.keyPoints} />
-          <SectionList title="Insights" items={analysis.insights} />
-          <SectionList title="Action items" items={analysis.actionItems} />
-
-          {analysis.tags.length > 0 ? (
-            <div className="mt-5 flex flex-wrap gap-2">
-              {analysis.tags.map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/?tag=${encodeURIComponent(tag)}`}
-                  className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200 transition hover:bg-violet-100"
-                >
-                  #{tag}
-                </Link>
-              ))}
-            </div>
+              <SectionList title="Key points" items={analysis.keyPoints} />
+              <SectionList title="Insights" items={analysis.insights} />
+              <SectionList title="Action items" items={analysis.actionItems} />
+            </section>
           ) : null}
-        </section>
-      ) : null}
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-zinc-950">Content</h2>
+          <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold text-zinc-950">Original content</h2>
+              <span className="text-xs uppercase tracking-wide text-zinc-400">
+                readable view
+              </span>
+            </div>
 
-        {previewText ? (
-          <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-zinc-800">
-            {previewText}
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-zinc-500">No readable content yet.</p>
-        )}
-      </section>
+            {previewText ? (
+              <div className="mt-5 max-w-3xl whitespace-pre-wrap break-words text-[15px] leading-8 text-zinc-800 sm:text-base">
+                {previewText}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-zinc-500">No readable content yet.</p>
+            )}
+          </section>
+        </div>
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-zinc-950">Metadata</h2>
-        <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-          <MetaRow label="Source URL" value={item.sourceUrl} />
-          <MetaRow label="Canonical URL" value={item.canonicalUrl} />
-          <MetaRow label="Source type" value={item.sourceType} />
-          <MetaRow label="Status" value={item.status} />
-          <MetaRow label="Fetch status" value={item.fetchStatus} />
-          <MetaRow label="Site" value={item.siteName} />
-          <MetaRow label="Author" value={item.authorName} />
-          <MetaRow label="Author handle" value={item.authorHandle ? `@${item.authorHandle}` : null} />
-          <MetaRow label="Published at" value={item.publishedAt ? formatDateTime(item.publishedAt) : null} />
-          <MetaRow label="Saved at" value={formatDateTime(item.createdAt)} />
-        </dl>
+        <aside className="flex min-w-0 flex-col gap-6">
+          {item.note ? (
+            <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-zinc-950">Your note</h2>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-zinc-700">
+                {item.note}
+              </p>
+            </section>
+          ) : null}
 
-        {item.fetchError ? (
-          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {item.fetchError}
-          </div>
-        ) : null}
-      </section>
+          <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-zinc-950">Overview</h2>
+            <dl className="mt-4 space-y-4 text-sm">
+              <MetaStack label="Status" value={item.status} />
+              <MetaStack label="Source" value={item.siteName || item.sourceType} />
+              <MetaStack
+                label="Author"
+                value={
+                  item.authorHandle
+                    ? `@${item.authorHandle}`
+                    : item.authorName || null
+                }
+              />
+              <MetaStack
+                label="Published"
+                value={item.publishedAt ? formatDateTime(item.publishedAt) : null}
+              />
+              <MetaStack label="Saved" value={formatDateTime(item.createdAt)} />
+              {analyzedAt ? (
+                <MetaStack label="AI analyzed" value={formatDateTime(analyzedAt)} />
+              ) : null}
+            </dl>
+          </section>
+
+          <details className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <summary className="cursor-pointer list-none text-lg font-semibold text-zinc-950 marker:hidden">
+              Technical metadata
+            </summary>
+
+            <dl className="mt-5 space-y-4 text-sm">
+              <MetaStack label="Source URL" value={item.sourceUrl} />
+              <MetaStack label="Canonical URL" value={item.canonicalUrl} />
+              <MetaStack label="Source type" value={item.sourceType} />
+              <MetaStack label="Fetch status" value={item.fetchStatus} />
+              <MetaStack label="Site" value={item.siteName} />
+            </dl>
+
+            {item.fetchError ? (
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                {item.fetchError}
+              </div>
+            ) : null}
+          </details>
+        </aside>
+      </div>
     </main>
   );
 }
@@ -175,7 +217,7 @@ function SectionList({ title, items }: { title: string; items: string[] }) {
   return (
     <div className="mt-5">
       <h3 className="font-medium text-zinc-950">{title}</h3>
-      <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-6 text-zinc-800">
+      <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-7 text-zinc-800">
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}
@@ -184,13 +226,13 @@ function SectionList({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-function MetaRow({ label, value }: { label: string; value: string | null }) {
+function MetaStack({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="rounded-2xl bg-zinc-50 p-4">
+    <div>
       <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
         {label}
       </dt>
-      <dd className="mt-2 break-words text-sm text-zinc-900">{value || "—"}</dd>
+      <dd className="mt-1 break-words text-sm text-zinc-900">{value || "—"}</dd>
     </div>
   );
 }
