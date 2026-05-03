@@ -239,79 +239,105 @@ export function InboxClient({
               No items yet.
             </div>
           ) : (
-            filteredItems.map((item) => (
-              <article
-                key={item.id}
-                className="rounded-2xl border border-zinc-200 p-4 transition hover:border-zinc-300"
-              >
-                <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
-                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
-                    {item.sourceType}
-                  </span>
-                  <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                    {item.status}
-                  </span>
-                  <span
-                    className={`rounded-full px-2.5 py-1 ${
-                      item.fetchStatus === "success"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-amber-50 text-amber-700"
-                    }`}
-                  >
-                    {item.fetchStatus}
-                  </span>
-                </div>
+            filteredItems.map((item) => {
+              const previewText = buildPreviewText(item);
 
-                <div className="mt-3 flex flex-col gap-2">
-                  <a
-                    href={item.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-lg font-semibold tracking-tight text-zinc-950 hover:text-sky-700"
-                  >
-                    {item.title || item.sourceUrl}
-                  </a>
-
-                  <div className="text-sm text-zinc-500">
-                    {item.authorHandle ? `@${item.authorHandle}` : item.authorName || item.siteName || "Unknown source"}
-                  </div>
-
-                  {item.summary ? (
-                    <p className="text-sm leading-6 text-zinc-700">{item.summary}</p>
-                  ) : null}
-
-                  {item.note ? (
-                    <div className="rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
-                      {item.note}
-                    </div>
-                  ) : null}
-
-                  {item.fetchError ? (
-                    <p className="text-sm text-amber-700">{item.fetchError}</p>
-                  ) : null}
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  {statuses.map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => updateStatus(item.id, status)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                        item.status === status
-                          ? "border-sky-600 bg-sky-600 text-white"
-                          : "border-zinc-300 text-zinc-700 hover:border-zinc-400"
+              return (
+                <article
+                  key={item.id}
+                  className="rounded-2xl border border-zinc-200 p-4 transition hover:border-zinc-300"
+                >
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
+                    <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
+                      {item.sourceType}
+                    </span>
+                    <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
+                      {item.status}
+                    </span>
+                    <span
+                      className={`rounded-full px-2.5 py-1 ${
+                        item.fetchStatus === "success"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-amber-50 text-amber-700"
                       }`}
                     >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </article>
-            ))
+                      {item.fetchStatus}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-col gap-2">
+                    <a
+                      href={item.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-lg font-semibold tracking-tight text-zinc-950 hover:text-sky-700"
+                    >
+                      {item.title || item.sourceUrl}
+                    </a>
+
+                    <div className="text-sm text-zinc-500">
+                      {item.authorHandle
+                        ? `@${item.authorHandle}`
+                        : item.authorName || item.siteName || "Unknown source"}
+                    </div>
+
+                    {previewText ? (
+                      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-zinc-700">
+                        {previewText}
+                      </p>
+                    ) : null}
+
+                    {item.note ? (
+                      <div className="rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+                        {item.note}
+                      </div>
+                    ) : null}
+
+                    {item.fetchError ? (
+                      <p className="text-sm text-amber-700">{item.fetchError}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    {statuses.map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => updateStatus(item.id, status)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                          item.status === status
+                            ? "border-sky-600 bg-sky-600 text-white"
+                            : "border-zinc-300 text-zinc-700 hover:border-zinc-400"
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              );
+            })
           )}
         </div>
       </section>
     </div>
   );
+}
+
+function buildPreviewText(item: SavedItem) {
+  const raw =
+    item.sourceType === "tweet"
+      ? item.contentText || item.summary
+      : item.summary || item.contentText;
+
+  if (!raw) {
+    return null;
+  }
+
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.length > 700 ? `${trimmed.slice(0, 700)}…` : trimmed;
 }
