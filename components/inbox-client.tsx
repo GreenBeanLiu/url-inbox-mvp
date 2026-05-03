@@ -700,15 +700,13 @@ export function InboxClient({
                           </span>
                         </div>
 
-                        <p className="mt-2 leading-6">{analysis.summary}</p>
-
-                        <SectionList title="Key points" items={analysis.keyPoints} />
-                        <SectionList title="Insights" items={analysis.insights} />
-                        <SectionList title="Action items" items={analysis.actionItems} />
+                        <p className="mt-2 leading-6 text-zinc-700">
+                          {truncateText(analysis.summary, 220)}
+                        </p>
 
                         {analysis.tags.length > 0 ? (
                           <div className="mt-3 flex flex-wrap gap-2">
-                            {analysis.tags.map((tag) => (
+                            {analysis.tags.slice(0, 4).map((tag) => (
                               <button
                                 key={tag}
                                 type="button"
@@ -718,8 +716,22 @@ export function InboxClient({
                                 #{tag}
                               </button>
                             ))}
+                            {analysis.tags.length > 4 ? (
+                              <span className="rounded-full bg-white px-2.5 py-1 text-xs text-zinc-500 ring-1 ring-violet-100">
+                                +{analysis.tags.length - 4}
+                              </span>
+                            ) : null}
                           </div>
                         ) : null}
+
+                        <div className="mt-3">
+                          <Link
+                            href={`/items/${item.id}`}
+                            className="text-xs font-medium text-violet-700 transition hover:text-violet-800"
+                          >
+                            Open details for full AI analysis →
+                          </Link>
+                        </div>
                       </div>
                     ) : null}
                   </div>
@@ -775,6 +787,16 @@ export function InboxClient({
       </section>
     </div>
   );
+}
+
+function truncateText(value: string, maxLength: number) {
+  const trimmed = value.trim();
+
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, maxLength).trimEnd()}…`;
 }
 
 function buildPreviewText(item: SavedItem) {
