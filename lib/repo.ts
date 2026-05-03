@@ -101,6 +101,14 @@ export async function findDuplicate(params: {
   return item ? toSavedItem(item) : null;
 }
 
+export async function deleteItem(id: string): Promise<boolean> {
+  const deleted = await prisma.item.deleteMany({
+    where: { id },
+  });
+
+  return deleted.count > 0;
+}
+
 export async function patchItem(
   id: string,
   updates: Partial<SavedItem>,

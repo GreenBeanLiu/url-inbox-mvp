@@ -1,4 +1,4 @@
-import { findItemById, patchItem } from "@/lib/repo";
+import { deleteItem, findItemById, patchItem } from "@/lib/repo";
 import { ItemPatchInput, ItemStatus } from "@/lib/types";
 
 const validStatuses = new Set<ItemStatus>([
@@ -20,6 +20,20 @@ export async function GET(
   }
 
   return Response.json({ item });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  const deleted = await deleteItem(id);
+
+  if (!deleted) {
+    return Response.json({ error: "Item not found." }, { status: 404 });
+  }
+
+  return Response.json({ ok: true, id });
 }
 
 export async function PATCH(

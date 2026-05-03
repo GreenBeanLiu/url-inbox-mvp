@@ -45,6 +45,8 @@ export function InboxClient({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const urlInputRef = useRef<HTMLInputElement | null>(null);
@@ -298,6 +300,39 @@ export function InboxClient({
     }
   }
 
+  async function removeItem(id: string) {
+    if (!window.confirm("Delete this saved item?")) {
+      return;
+    }
+
+    setError(null);
+    setNotice(null);
+    setDeletingId(id);
+
+    try {
+      const response = await fetch(`/api/items/${id}`, {
+        method: "DELETE",
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Delete failed.");
+      }
+
+      setItems((current) => current.filter((item) => item.id !== id));
+      setNotice("Deleted.");
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error ? deleteError.message : "Unknown delete error",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div className="grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -374,113 +409,121 @@ export function InboxClient({
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 border-b border-zinc-200 pb-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-zinc-950">Inbox</h2>
               <p className="text-sm text-zinc-600">
                 {filteredItems.length} of {items.length} items
               </p>
             </div>
-          </div>
 
-          <div className="grid gap-3 sm:grid-cols-4">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search title, note, text..."
-              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 sm:col-span-2"
-            />
-
-            <select
-              value={sourceFilter}
-              onChange={(event) =>
-                setSourceFilter(event.target.value as "all" | "web" | "tweet")
-              }
-              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-            >
-              <option value="all">All sources</option>
-              <option value="web">Web</option>
-              <option value="tweet">Tweet</option>
-            </select>
-
-            <select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as "all" | ItemStatus)
-              }
-              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-            >
-              <option value="all">All status</option>
-              {statuses.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Tags
-            </span>
-            <button
-              type="button"
-              onClick={() => setTagFilter("")}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                !tagFilter
-                  ? "bg-violet-600 text-white"
-                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-              }`}
-            >
-              All
-            </button>
-            {availableTags.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => setTagFilter(tag)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  tagFilter.toLowerCase() === tag.toLowerCase()
-                    ? "bg-violet-600 text-white"
-                    : "bg-violet-50 text-violet-700 hover:bg-violet-100"
-                }`}
-              >
-                #{tag}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-2">
-            <GroupedSourceList
-              title="Blog sources"
-              emptyLabel="No web sources in this view."
-              groups={webSourceGroups}
-              activeKey={sourceGroupFilter.kind === "web" ? sourceGroupFilter.key : null}
-              onSelect={(key) => toggleSourceGroup("web", key)}
-            />
-            <GroupedSourceList
-              title="X authors"
-              emptyLabel="No tweet authors in this view."
-              groups={tweetAuthorGroups}
-              activeKey={
-                sourceGroupFilter.kind === "tweet" ? sourceGroupFilter.key : null
-              }
-              onSelect={(key) => toggleSourceGroup("tweet", key)}
-            />
-          </div>
-
-          {activeGroupLabel ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                Grouped filter
-              </span>
+              {activeGroupLabel ? (
+                <button
+                  type="button"
+                  onClick={() => setSourceGroupFilter({ kind: "none" })}
+                  className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:bg-sky-100"
+                >
+                  {activeGroupLabel} ×
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={() => setSourceGroupFilter({ kind: "none" })}
-                className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:bg-sky-100"
+                onClick={() => setShowFilters((current) => !current)}
+                className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400"
               >
-                {activeGroupLabel} ×
+                {showFilters ? "Hide filters" : "Show filters"}
               </button>
+            </div>
+          </div>
+
+          {showFilters ? (
+            <div className="flex flex-col gap-4">
+              <div className="grid gap-3 sm:grid-cols-4">
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search title, note, text..."
+                  className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 sm:col-span-2"
+                />
+
+                <select
+                  value={sourceFilter}
+                  onChange={(event) =>
+                    setSourceFilter(event.target.value as "all" | "web" | "tweet")
+                  }
+                  className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                >
+                  <option value="all">All sources</option>
+                  <option value="web">Web</option>
+                  <option value="tweet">Tweet</option>
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value as "all" | ItemStatus)
+                  }
+                  className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                >
+                  <option value="all">All status</option>
+                  {statuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  Tags
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setTagFilter("")}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    !tagFilter
+                      ? "bg-violet-600 text-white"
+                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                  }`}
+                >
+                  All
+                </button>
+                {availableTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setTagFilter(tag)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      tagFilter.toLowerCase() === tag.toLowerCase()
+                        ? "bg-violet-600 text-white"
+                        : "bg-violet-50 text-violet-700 hover:bg-violet-100"
+                    }`}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <GroupedSourceList
+                  title="Blog sources"
+                  emptyLabel="No web sources in this view."
+                  groups={webSourceGroups}
+                  activeKey={sourceGroupFilter.kind === "web" ? sourceGroupFilter.key : null}
+                  onSelect={(key) => toggleSourceGroup("web", key)}
+                />
+                <GroupedSourceList
+                  title="X authors"
+                  emptyLabel="No tweet authors in this view."
+                  groups={tweetAuthorGroups}
+                  activeKey={
+                    sourceGroupFilter.kind === "tweet" ? sourceGroupFilter.key : null
+                  }
+                  onSelect={(key) => toggleSourceGroup("tweet", key)}
+                />
+              </div>
             </div>
           ) : null}
         </div>
@@ -663,7 +706,11 @@ export function InboxClient({
                     <button
                       type="button"
                       onClick={() => analyzeItem(item.id)}
-                      disabled={analyzingId === item.id || (!item.contentText && !item.summary)}
+                      disabled={
+                        deletingId === item.id ||
+                        analyzingId === item.id ||
+                        (!item.contentText && !item.summary)
+                      }
                       className="rounded-full border border-violet-300 px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:border-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {analyzingId === item.id
@@ -678,15 +725,25 @@ export function InboxClient({
                         key={status}
                         type="button"
                         onClick={() => updateStatus(item.id, status)}
+                        disabled={deletingId === item.id}
                         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                           item.status === status
                             ? "border-sky-600 bg-sky-600 text-white"
                             : "border-zinc-300 text-zinc-700 hover:border-zinc-400"
-                        }`}
+                        } disabled:cursor-not-allowed disabled:opacity-50`}
                       >
                         {status}
                       </button>
                     ))}
+
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.id)}
+                      disabled={deletingId === item.id || analyzingId === item.id}
+                      className="rounded-full border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:border-red-400 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {deletingId === item.id ? "Deleting..." : "Delete"}
+                    </button>
                   </div>
                 </article>
               );
