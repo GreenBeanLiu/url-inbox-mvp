@@ -29,6 +29,16 @@ function getModel() {
 }
 
 export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
+  console.error("[ai] analyze start", {
+    itemId: item.id,
+    sourceType: item.sourceType,
+    model: process.env.AI_MODEL || "gpt-4o-mini",
+    baseURL: process.env.OPENAI_BASE_URL || null,
+    hasApiKey: Boolean(process.env.OPENAI_API_KEY),
+    apiKeyPrefix: process.env.OPENAI_API_KEY?.slice(0, 8) || null,
+    apiKeyLength: process.env.OPENAI_API_KEY?.length || 0,
+  });
+
   const content = [
     item.title ? `Title: ${item.title}` : null,
     item.authorHandle
@@ -73,19 +83,53 @@ export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
     content,
   ].join("\n");
 
-  const { text } = await generateText({
-    model: getModel(),
-    system:
-      "You analyze saved links and tweets for a personal inbox product. Return concise, practical Chinese output. You must return raw JSON only.",
-    prompt,
-    temperature: 0.2,
-  });
+  let text: string;
+
+  try {
+    const result = await generateText({
+      model: getModel(),
+      system:
+        "You analyze saved links and tweets for a personal inbox product. Return concise, practical Chinese output. You must return raw JSON only.",
+      prompt,
+      temperature: 0.2,
+    });
+
+    text = result.text;
+  } catch (error) {
+    console.error("[ai] generateText failed", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+      cause:
+        error instanceof Error && "cause" in error
+          ? String((error as Error & { cause?: unknown }).cause)
+          : null,
+      statusCode:
+        typeof error === "object" && error !== null && "statusCode" in error
+          ? (error as { statusCode?: unknown }).statusCode
+          : null,
+      url:
+        typeof error === "object" && error !== null && "url" in error
+          ? (error as { url?: unknown }).url
+          : null,
+      responseBody:
+        typeof error === "object" && error !== null && "responseBody" in error
+          ? (error as { responseBody?: unknown }).responseBody
+          : null,
+    });
+    throw error;
+  }
 
   const jsonText = extractJsonObject(text);
 
   try {
     return analysisSchema.parse(JSON.parse(jsonText));
-  } catch {
+  } catch (error) {
+    console.error("[ai] parse failed", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+      rawText: text.slice(0, 2000),
+      extractedJsonText: jsonText.slice(0, 2000),
+    });
     throw new Error("AI analysis failed.");
   }
 }
