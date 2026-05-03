@@ -213,23 +213,28 @@ export function InboxClient({
 
         <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit}>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-zinc-900">URL</span>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-zinc-900">URL</span>
+              <span className="text-xs text-zinc-500">required</span>
+            </div>
             <input
               value={url}
               onChange={(event) => setUrl(event.target.value)}
-              placeholder="https://x.com/... or https://example.com/..."
-              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+              placeholder="Paste any article or x.com link"
+              className="rounded-2xl border border-zinc-300 px-4 py-3 text-base text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
             />
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-zinc-900">Note</span>
-            <textarea
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-zinc-900">Note</span>
+              <span className="text-xs text-zinc-500">optional</span>
+            </div>
+            <input
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              rows={4}
-              placeholder="Why save this?"
-              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+              placeholder="Why are you saving this?"
+              className="rounded-xl border border-zinc-300 px-3 py-2.5 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
             />
           </label>
 
@@ -252,14 +257,6 @@ export function InboxClient({
             </div>
           </div>
         </form>
-
-        <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          <p className="font-medium text-zinc-950">TikHub + AI</p>
-          <p className="mt-1 leading-6">
-            Tweet hydration uses <code>TIKHUB_API_TOKEN</code>. AI analysis uses
-            <code> OPENAI_API_KEY</code> and optional <code>AI_MODEL</code>.
-          </p>
-        </div>
 
         {notice ? (
           <p className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700">
