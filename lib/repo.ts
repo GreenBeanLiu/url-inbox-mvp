@@ -27,6 +27,55 @@ export async function findItemById(id: string): Promise<SavedItem | null> {
   return item ? toSavedItem(item) : null;
 }
 
+export async function findHostRelatedItems(sourceUrl: string, excludeId: string) {
+  let host: string;
+
+  try {
+    host = new URL(sourceUrl).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return {
+      host: null,
+      savedCount: 0,
+      items: [] as SavedItem[],
+    };
+  }
+
+  const candidates = await prisma.item.findMany({
+    where: {
+      sourceType: "web",
+      id: { not: excludeId },
+      OR: [
+        { sourceUrl: { contains: host, mode: "insensitive" } },
+        { canonicalUrl: { contains: host, mode: "insensitive" } },
+        { siteName: { contains: host, mode: "insensitive" } },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const matchingItems = candidates.filter((item) => {
+    const urls = [item.sourceUrl, item.canonicalUrl].filter(Boolean) as string[];
+
+    for (const value of urls) {
+      try {
+        if (new URL(value).hostname.replace(/^www\./, "").toLowerCase() === host) {
+          return true;
+        }
+      } catch {
+        // ignore invalid saved URLs
+      }
+    }
+
+    return item.siteName?.trim().toLowerCase() === host;
+  });
+
+  return {
+    host,
+    savedCount: matchingItems.length + 1,
+    items: matchingItems.slice(0, 4).map(toSavedItem),
+  };
+}
+
 export async function findDuplicate(params: {
   sourceType: SavedItem["sourceType"];
   canonicalUrl?: string;

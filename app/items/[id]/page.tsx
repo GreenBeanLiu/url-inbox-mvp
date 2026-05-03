@@ -2,7 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExpandableContent } from "@/components/expandable-content";
 import { readAnalysis, readAnalyzedAt } from "@/lib/item-analysis";
-import { findItemById } from "@/lib/repo";
+import {
+  getUrlHost,
+  isResourceLikeKind,
+  readResourceClassification,
+} from "@/lib/resource";
+import { findHostRelatedItems, findItemById } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +23,33 @@ export default async function ItemDetailPage({
     notFound();
   }
 
+  const hostContext =
+    item.sourceType === "web"
+      ? await findHostRelatedItems(item.sourceUrl, item.id)
+      : { host: null, savedCount: 0, items: [] };
+
   const analysis = readAnalysis(item);
   const analyzedAt = readAnalyzedAt(item);
+  const resource = readResourceClassification(item);
+  const resourceKind = resource?.kind || null;
+  const isResourceLike = isResourceLikeKind(resourceKind);
+  const hostLabel = hostContext.host || getUrlHost(item.sourceUrl);
   const contentText = item.contentText?.trim() || null;
   const summaryText = item.summary?.trim() || null;
   const fullContent = contentText || summaryText;
   const showSummary =
     Boolean(summaryText) && Boolean(contentText) && summaryText !== contentText;
+  const aiSectionTitle = isResourceLike ? "AI analysis" : "AI summary";
+  const summarySectionTitle = isResourceLike ? "Saved preview" : "Summary";
+  const contentSectionTitle = isResourceLike ? "Saved details" : "Original content";
+  const contentSectionLabel = contentText
+    ? isResourceLike
+      ? "captured page text"
+      : "full extracted text"
+    : isResourceLike
+      ? "saved snippet"
+      : "saved summary";
+  const resourceDescription = buildResourceDescription(resourceKind, item.siteName);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -67,6 +92,11 @@ export default async function ItemDetailPage({
           <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
             {item.sourceType}
           </span>
+          {resourceKind ? (
+            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+              {resourceKind}
+            </span>
+          ) : null}
           <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
             {item.status}
           </span>
@@ -111,7 +141,7 @@ export default async function ItemDetailPage({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold text-zinc-950">
-                    AI summary
+                    {aiSectionTitle}
                   </h2>
                   {analyzedAt ? (
                     <p className="mt-1 text-sm text-zinc-500">
@@ -137,7 +167,9 @@ export default async function ItemDetailPage({
           {showSummary ? (
             <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-zinc-950">Summary</h2>
+                <h2 className="text-xl font-semibold text-zinc-950">
+                  {summarySectionTitle}
+                </h2>
                 <span className="text-xs uppercase tracking-wide text-zinc-400">
                   quick preview
                 </span>
@@ -151,9 +183,11 @@ export default async function ItemDetailPage({
 
           <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold text-zinc-950">Original content</h2>
+              <h2 className="text-xl font-semibold text-zinc-950">
+                {contentSectionTitle}
+              </h2>
               <span className="text-xs uppercase tracking-wide text-zinc-400">
-                {contentText ? "full extracted text" : "saved summary"}
+                {contentSectionLabel}
               </span>
             </div>
 
@@ -168,6 +202,39 @@ export default async function ItemDetailPage({
         </div>
 
         <aside className="flex min-w-0 flex-col gap-6">
+          {isResourceLike ? (
+            <section className="rounded-3xl border border-amber-200 bg-amber-50/70 p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-zinc-950">
+                    Resource overview
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-zinc-700">
+                    {resourceDescription}
+                  </p>
+                </div>
+                {resource ? (
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
+                    {(resource.confidence * 100).toFixed(0)}% match
+                  </span>
+                ) : null}
+              </div>
+
+              {resource?.signals?.length ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {resource.signals.map((signal) => (
+                    <span
+                      key={signal}
+                      className="rounded-full bg-white px-2.5 py-1 text-xs text-amber-800 ring-1 ring-amber-200"
+                    >
+                      {signal}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           {item.note ? (
             <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-semibold text-zinc-950">Your note</h2>
@@ -180,6 +247,21 @@ export default async function ItemDetailPage({
           <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-zinc-950">Overview</h2>
             <dl className="mt-4 space-y-4 text-sm">
+              {hostLabel ? (
+                <MetaStack
+                  label="Host"
+                  value={
+                    hostContext.savedCount > 0
+                      ? `${hostLabel} · saved ${hostContext.savedCount} time${
+                          hostContext.savedCount === 1 ? "" : "s"
+                        }`
+                      : hostLabel
+                  }
+                />
+              ) : null}
+              {resourceKind ? (
+                <MetaStack label="Kind" value={resourceKind} />
+              ) : null}
               <MetaStack label="Status" value={item.status} />
               <MetaStack label="Source" value={item.siteName || item.sourceType} />
               <MetaStack
@@ -200,6 +282,38 @@ export default async function ItemDetailPage({
               ) : null}
             </dl>
           </section>
+
+          {hostContext.items.length > 0 ? (
+            <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-zinc-950">
+                  More from this host
+                </h2>
+                {hostLabel ? (
+                  <span className="text-xs uppercase tracking-wide text-zinc-400">
+                    {hostLabel}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3">
+                {hostContext.items.map((related) => (
+                  <Link
+                    key={related.id}
+                    href={`/items/${related.id}`}
+                    className="rounded-2xl border border-zinc-200 px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-50"
+                  >
+                    <div className="text-sm font-medium text-zinc-950">
+                      {related.title || related.sourceUrl}
+                    </div>
+                    <div className="mt-1 text-xs text-zinc-500">
+                      Saved {formatDateTime(related.createdAt)}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <details className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
             <summary className="cursor-pointer list-none text-lg font-semibold text-zinc-950 marker:hidden">
@@ -265,4 +379,19 @@ function formatDateTime(value: string) {
     timeStyle: "short",
     timeZone: "Asia/Shanghai",
   }).format(date);
+}
+
+function buildResourceDescription(
+  kind: "article" | "tool" | "workspace" | null,
+  siteName: string | null,
+) {
+  if (kind === "workspace") {
+    return `This looks more like a saved workspace or project surface than a reading page${siteName ? ` from ${siteName}` : ""}. Review it as a working context, document, board, or project artifact.`;
+  }
+
+  if (kind === "tool") {
+    return `This looks like a product or tool link${siteName ? ` from ${siteName}` : ""}. Focus on what it does, where it fits, and whether it is worth trying or sharing.`;
+  }
+
+  return `This item is treated as a reading-oriented page${siteName ? ` from ${siteName}` : ""}.`;
 }

@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { classifyWebResource } from "@/lib/resource";
 import { parseSource } from "@/lib/source";
 import { SavedItem } from "@/lib/types";
 
@@ -81,6 +82,13 @@ async function fetchWebItem(input: {
 
     const contentText = buildTextPreview($);
     const summary = description || summarizeText(contentText);
+    const resource = classifyWebResource({
+      sourceUrl: canonicalUrl || input.canonicalUrl,
+      title,
+      description,
+      siteName,
+      contentText,
+    });
 
     return {
       id: input.id,
@@ -103,6 +111,7 @@ async function fetchWebItem(input: {
       rawPayload: null,
       meta: {
         extractedWith: "cheerio",
+        resource,
       },
       createdAt: input.existingCreatedAt ?? now,
       updatedAt: now,
@@ -129,6 +138,13 @@ async function fetchWebItem(input: {
       rawPayload: null,
       meta: {
         extractedWith: "cheerio",
+        resource: classifyWebResource({
+          sourceUrl: input.canonicalUrl,
+          title: input.sourceUrl,
+          description: null,
+          siteName: new URL(input.sourceUrl).hostname,
+          contentText: null,
+        }),
       },
       createdAt: input.existingCreatedAt ?? now,
       updatedAt: now,

@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ItemStatus, SavedItem } from "@/lib/types";
 import { readAnalysis, readAnalyzedAt } from "@/lib/item-analysis";
+import {
+  getUrlHost,
+  isResourceLikeKind,
+  readResourceClassification,
+} from "@/lib/resource";
+import { ItemStatus, SavedItem } from "@/lib/types";
 
 const statuses: ItemStatus[] = ["inbox", "later", "done", "archived"];
 
@@ -98,6 +103,10 @@ export function InboxClient({
   const tweetAuthorGroups = useMemo(
     () => buildTweetAuthorGroups(contextItems),
     [contextItems],
+  );
+  const webSourceCounts = useMemo(
+    () => new Map(webSourceGroups.map((group) => [group.key, group.count])),
+    [webSourceGroups],
   );
   const tweetAuthorCounts = useMemo(
     () => new Map(tweetAuthorGroups.map((group) => [group.key, group.count])),
@@ -486,6 +495,14 @@ export function InboxClient({
               const previewText = buildPreviewText(item);
               const analysis = readAnalysis(item);
               const analyzedAt = readAnalyzedAt(item);
+              const resource = readResourceClassification(item);
+              const resourceKind = resource?.kind || null;
+              const isResourceLike = isResourceLikeKind(resourceKind);
+              const webSourceKey = getWebSourceKey(item);
+              const webSourceCount =
+                item.sourceType === "web" && webSourceKey
+                  ? webSourceCounts.get(webSourceKey) || 0
+                  : 0;
               const tweetAuthorKey = getTweetAuthorKey(item);
               const tweetAuthorCount =
                 item.sourceType === "tweet" && tweetAuthorKey
@@ -501,6 +518,11 @@ export function InboxClient({
                     <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
                       {item.sourceType}
                     </span>
+                    {resourceKind ? (
+                      <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+                        {resourceKind}
+                      </span>
+                    ) : null}
                     <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
                       {item.status}
                     </span>
@@ -538,6 +560,21 @@ export function InboxClient({
                             : item.authorName || item.siteName || "Unknown source"}
                         </div>
 
+                        {item.sourceType === "web" && webSourceKey ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleSourceGroup("web", webSourceKey)}
+                            className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                              sourceGroupFilter.kind === "web" &&
+                              sourceGroupFilter.key === webSourceKey
+                                ? "bg-sky-600 text-white"
+                                : "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                            }`}
+                          >
+                            Saved {webSourceCount} from {getUrlHost(item.sourceUrl) || item.siteName || "this host"}
+                          </button>
+                        ) : null}
+
                         {item.sourceType === "tweet" && tweetAuthorKey ? (
                           <button
                             type="button"
@@ -565,6 +602,10 @@ export function InboxClient({
                     {previewText ? (
                       <p className="whitespace-pre-wrap break-words text-sm leading-6 text-zinc-700">
                         {previewText}
+                      </p>
+                    ) : isResourceLike ? (
+                      <p className="text-sm leading-6 text-zinc-500">
+                        Saved as a resource link. Open details for host context and AI analysis.
                       </p>
                     ) : null}
 
@@ -658,10 +699,13 @@ export function InboxClient({
 }
 
 function buildPreviewText(item: SavedItem) {
+  const resourceKind = readResourceClassification(item)?.kind || null;
   const raw =
     item.sourceType === "tweet"
       ? item.contentText || item.summary
-      : item.summary || item.contentText;
+      : isResourceLikeKind(resourceKind)
+        ? item.contentText || item.summary
+        : item.summary || item.contentText;
 
   if (!raw) {
     return null;

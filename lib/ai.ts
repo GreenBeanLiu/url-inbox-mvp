@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
+import { isResourceLikeKind, readResourceClassification } from "@/lib/resource";
 import { SavedItem } from "@/lib/types";
 
 const analysisSchema = z.object({
@@ -37,9 +38,14 @@ function getTextVerbosity() {
 }
 
 export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
+  const resource = readResourceClassification(item);
+  const resourceKind = item.sourceType === "tweet" ? "tweet" : resource?.kind || "article";
+  const isResourceLike = isResourceLikeKind(resource?.kind || null);
+
   console.error("[ai] analyze start", {
     itemId: item.id,
     sourceType: item.sourceType,
+    resourceKind,
     model: process.env.AI_MODEL || "gpt-5.4-mini",
     reasoningEffort: getReasoningEffort(),
     textVerbosity: getTextVerbosity(),
@@ -61,6 +67,14 @@ export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
     item.note ? `User note: ${item.note}` : null,
     item.summary ? `Existing summary: ${item.summary}` : null,
     item.contentText ? `Content:\n${item.contentText}` : null,
+    resource
+      ? `Resource classification: ${JSON.stringify({
+          kind: resource.kind,
+          confidence: resource.confidence,
+          signals: resource.signals,
+          host: resource.host,
+        })}`
+      : null,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -84,13 +98,24 @@ export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
       confidence: 0.86,
     }),
     "Requirements:",
-    "- summary: 2-4 sentences in Chinese.",
-    "- keyPoints: 1-5 concise Chinese bullets as strings.",
-    "- insights: 1-5 concise Chinese bullets as strings; prefer deeper takeaways, tensions, implications, and what actually matters.",
-    "- actionItems: 0-5 concrete follow-up actions in Chinese, specific to this item rather than generic advice.",
+    isResourceLike
+      ? "- summary: 2-4 sentences in Chinese explaining what this product/resource is, what it enables, and why it may matter."
+      : "- summary: 2-4 sentences in Chinese.",
+    isResourceLike
+      ? "- keyPoints: 1-5 concise Chinese bullets covering capabilities, use cases, intended users, setup/access model, or constraints."
+      : "- keyPoints: 1-5 concise Chinese bullets as strings.",
+    isResourceLike
+      ? "- insights: 1-5 concise Chinese bullets emphasizing why it was worth saving, practical implications, adoption fit, and notable caveats."
+      : "- insights: 1-5 concise Chinese bullets as strings; prefer deeper takeaways, tensions, implications, and what actually matters.",
+    isResourceLike
+      ? "- actionItems: 0-5 concrete Chinese follow-ups such as evaluate, compare, test, integrate, or share with the right teammate."
+      : "- actionItems: 0-5 concrete follow-up actions in Chinese, specific to this item rather than generic advice.",
     "- tags: 0-8 short topical tags in Chinese or English.",
     "- confidence: a number between 0 and 1.",
     "- Avoid generic filler. Read the entire provided content before deciding the answer.",
+    isResourceLike
+      ? `- This is a ${resourceKind} link, not a normal article. Do not default to article summarization. Treat the page as a saved product/resource and explain: what it is, capabilities/use cases, who it is for, why the user may have saved it, and the most practical next step.`
+      : "- For articles and tweets, preserve the current content-summary behavior.",
     "",
     content,
   ].join("\n");
@@ -101,7 +126,7 @@ export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
     const result = await generateText({
       model: getModel(),
       system:
-        "You analyze saved links and tweets for a personal inbox product. Read carefully, reason thoroughly, and return practical Chinese output. You must return raw JSON only.",
+        "You analyze saved links and tweets for a personal inbox product. Adapt the analysis style to the item kind: articles and tweets get content-summary treatment, while tools and workspaces get product/resource analysis. Return practical Chinese output as raw JSON only.",
       prompt,
       temperature: 0.2,
       providerOptions: {
