@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ItemStatus, SavedItem } from "@/lib/types";
 import { readAnalysis, readAnalyzedAt } from "@/lib/item-analysis";
 
@@ -27,10 +27,23 @@ export function InboxClient({
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const urlInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setTagFilter(initialTag || "");
   }, [initialTag]);
+
+  useEffect(() => {
+    if (!notice) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+    }, 2000);
+
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const availableTags = useMemo(() => {
     return Array.from(
@@ -132,6 +145,7 @@ export function InboxClient({
 
       setUrl("");
       setNote("");
+      urlInputRef.current?.focus();
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -218,9 +232,14 @@ export function InboxClient({
               <span className="text-xs text-zinc-500">required</span>
             </div>
             <input
+              ref={urlInputRef}
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               placeholder="Paste any article or x.com link"
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               className="rounded-2xl border border-zinc-300 px-4 py-3 text-base text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
             />
           </label>
@@ -234,6 +253,7 @@ export function InboxClient({
               value={note}
               onChange={(event) => setNote(event.target.value)}
               placeholder="Why are you saving this?"
+              autoComplete="off"
               className="rounded-xl border border-zinc-300 px-3 py-2.5 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
             />
           </label>
