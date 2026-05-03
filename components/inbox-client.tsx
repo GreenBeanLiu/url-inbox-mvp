@@ -7,6 +7,18 @@ import { readAnalysis, readAnalyzedAt } from "@/lib/item-analysis";
 
 const statuses: ItemStatus[] = ["inbox", "later", "done", "archived"];
 
+type SourceGroupFilter =
+  | { kind: "none" }
+  | { kind: "web"; key: string }
+  | { kind: "tweet"; key: string };
+
+type SourceGroup = {
+  key: string;
+  label: string;
+  count: number;
+  subtitle?: string;
+};
+
 export function InboxClient({
   initialItems,
   initialTag,
@@ -23,6 +35,9 @@ export function InboxClient({
   );
   const [statusFilter, setStatusFilter] = useState<"all" | ItemStatus>("all");
   const [tagFilter, setTagFilter] = useState(initialTag || "");
+  const [sourceGroupFilter, setSourceGroupFilter] = useState<SourceGroupFilter>({
+    kind: "none",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +60,16 @@ export function InboxClient({
     return () => window.clearTimeout(timer);
   }, [notice]);
 
+  useEffect(() => {
+    if (
+      sourceGroupFilter.kind !== "none" &&
+      sourceFilter !== "all" &&
+      sourceFilter !== sourceGroupFilter.kind
+    ) {
+      setSourceGroupFilter({ kind: "none" });
+    }
+  }, [sourceFilter, sourceGroupFilter]);
+
   const availableTags = useMemo(() => {
     return Array.from(
       new Set(
@@ -53,51 +78,98 @@ export function InboxClient({
     ).sort((a, b) => a.localeCompare(b, "zh-CN"));
   }, [items]);
 
+  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedTag = tagFilter.trim().toLowerCase();
+
+  const contextItems = useMemo(() => {
+    return items.filter((item) =>
+      matchesContextFilters(item, {
+        query: normalizedQuery,
+        statusFilter,
+        tagFilter: normalizedTag,
+      }),
+    );
+  }, [items, normalizedQuery, normalizedTag, statusFilter]);
+
+  const webSourceGroups = useMemo(
+    () => buildWebSourceGroups(contextItems),
+    [contextItems],
+  );
+  const tweetAuthorGroups = useMemo(
+    () => buildTweetAuthorGroups(contextItems),
+    [contextItems],
+  );
+  const tweetAuthorCounts = useMemo(
+    () => new Map(tweetAuthorGroups.map((group) => [group.key, group.count])),
+    [tweetAuthorGroups],
+  );
+  const activeGroupLabel = useMemo(() => {
+    if (sourceGroupFilter.kind === "none") {
+      return null;
+    }
+
+    const groups =
+      sourceGroupFilter.kind === "web" ? webSourceGroups : tweetAuthorGroups;
+    const match = groups.find((group) => group.key === sourceGroupFilter.key);
+
+    if (!match) {
+      return null;
+    }
+
+    return sourceGroupFilter.kind === "web"
+      ? `Source: ${match.label}`
+      : `Author: ${match.label}`;
+  }, [sourceGroupFilter, tweetAuthorGroups, webSourceGroups]);
+
   const filteredItems = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const normalizedTag = tagFilter.trim().toLowerCase();
-
     return items.filter((item) => {
-      const analysis = readAnalysis(item);
-
       if (sourceFilter !== "all" && item.sourceType !== sourceFilter) {
         return false;
       }
 
-      if (statusFilter !== "all" && item.status !== statusFilter) {
-        return false;
-      }
-
       if (
-        normalizedTag &&
-        !(analysis?.tags || []).some((tag) => tag.toLowerCase() === normalizedTag)
+        !matchesContextFilters(item, {
+          query: normalizedQuery,
+          statusFilter,
+          tagFilter: normalizedTag,
+        })
       ) {
         return false;
       }
 
-      if (!q) {
-        return true;
+      if (sourceGroupFilter.kind === "web") {
+        return (
+          item.sourceType === "web" &&
+          getWebSourceKey(item) === sourceGroupFilter.key
+        );
       }
 
-      const haystack = [
-        item.title,
-        item.summary,
-        item.contentText,
-        item.note,
-        item.authorName,
-        item.authorHandle,
-        item.siteName,
-        item.sourceUrl,
-        analysis?.summary,
-        ...(analysis?.tags || []),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+      if (sourceGroupFilter.kind === "tweet") {
+        return (
+          item.sourceType === "tweet" &&
+          getTweetAuthorKey(item) === sourceGroupFilter.key
+        );
+      }
 
-      return haystack.includes(q);
+      return true;
     });
-  }, [items, query, sourceFilter, statusFilter, tagFilter]);
+  }, [
+    items,
+    normalizedQuery,
+    normalizedTag,
+    sourceFilter,
+    sourceGroupFilter,
+    statusFilter,
+  ]);
+
+  function toggleSourceGroup(kind: "web" | "tweet", key: string) {
+    setSourceFilter(kind);
+    setSourceGroupFilter((current) =>
+      current.kind === kind && current.key === key
+        ? { kind: "none" }
+        : { kind, key },
+    );
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -368,6 +440,40 @@ export function InboxClient({
               </button>
             ))}
           </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <GroupedSourceList
+              title="Blog sources"
+              emptyLabel="No web sources in this view."
+              groups={webSourceGroups}
+              activeKey={sourceGroupFilter.kind === "web" ? sourceGroupFilter.key : null}
+              onSelect={(key) => toggleSourceGroup("web", key)}
+            />
+            <GroupedSourceList
+              title="X authors"
+              emptyLabel="No tweet authors in this view."
+              groups={tweetAuthorGroups}
+              activeKey={
+                sourceGroupFilter.kind === "tweet" ? sourceGroupFilter.key : null
+              }
+              onSelect={(key) => toggleSourceGroup("tweet", key)}
+            />
+          </div>
+
+          {activeGroupLabel ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Grouped filter
+              </span>
+              <button
+                type="button"
+                onClick={() => setSourceGroupFilter({ kind: "none" })}
+                className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:bg-sky-100"
+              >
+                {activeGroupLabel} ×
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-5 flex flex-col gap-4">
@@ -380,6 +486,11 @@ export function InboxClient({
               const previewText = buildPreviewText(item);
               const analysis = readAnalysis(item);
               const analyzedAt = readAnalyzedAt(item);
+              const tweetAuthorKey = getTweetAuthorKey(item);
+              const tweetAuthorCount =
+                item.sourceType === "tweet" && tweetAuthorKey
+                  ? tweetAuthorCounts.get(tweetAuthorKey) || 0
+                  : 0;
 
               return (
                 <article
@@ -426,6 +537,21 @@ export function InboxClient({
                             ? `@${item.authorHandle}`
                             : item.authorName || item.siteName || "Unknown source"}
                         </div>
+
+                        {item.sourceType === "tweet" && tweetAuthorKey ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleSourceGroup("tweet", tweetAuthorKey)}
+                            className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                              sourceGroupFilter.kind === "tweet" &&
+                              sourceGroupFilter.key === tweetAuthorKey
+                                ? "bg-sky-600 text-white"
+                                : "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                            }`}
+                          >
+                            Saved {tweetAuthorCount} from this author
+                          </button>
+                        ) : null}
                       </div>
 
                       <Link
@@ -547,6 +673,221 @@ function buildPreviewText(item: SavedItem) {
   }
 
   return trimmed.length > 700 ? `${trimmed.slice(0, 700)}…` : trimmed;
+}
+
+function GroupedSourceList({
+  title,
+  emptyLabel,
+  groups,
+  activeKey,
+  onSelect,
+}: {
+  title: string;
+  emptyLabel: string;
+  groups: SourceGroup[];
+  activeKey: string | null;
+  onSelect: (key: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-zinc-950">{title}</h3>
+        <span className="text-xs text-zinc-500">{groups.length}</span>
+      </div>
+
+      {groups.length === 0 ? (
+        <p className="mt-3 text-sm text-zinc-500">{emptyLabel}</p>
+      ) : (
+        <div className="mt-3 flex max-h-56 flex-col gap-2 overflow-auto pr-1">
+          {groups.map((group) => {
+            const isActive = activeKey === group.key;
+
+            return (
+              <button
+                key={group.key}
+                type="button"
+                onClick={() => onSelect(group.key)}
+                className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition ${
+                  isActive
+                    ? "bg-sky-600 text-white"
+                    : "bg-white text-zinc-800 hover:bg-zinc-100"
+                }`}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">
+                    {group.label}
+                  </span>
+                  {group.subtitle ? (
+                    <span
+                      className={`block truncate text-xs ${
+                        isActive ? "text-sky-100" : "text-zinc-500"
+                      }`}
+                    >
+                      {group.subtitle}
+                    </span>
+                  ) : null}
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    isActive
+                      ? "bg-white/15 text-white"
+                      : "bg-zinc-100 text-zinc-700"
+                  }`}
+                >
+                  {group.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function matchesContextFilters(
+  item: SavedItem,
+  {
+    query,
+    statusFilter,
+    tagFilter,
+  }: {
+    query: string;
+    statusFilter: "all" | ItemStatus;
+    tagFilter: string;
+  },
+) {
+  const analysis = readAnalysis(item);
+
+  if (statusFilter !== "all" && item.status !== statusFilter) {
+    return false;
+  }
+
+  if (
+    tagFilter &&
+    !(analysis?.tags || []).some((tag) => tag.toLowerCase() === tagFilter)
+  ) {
+    return false;
+  }
+
+  if (!query) {
+    return true;
+  }
+
+  const haystack = [
+    item.title,
+    item.summary,
+    item.contentText,
+    item.note,
+    item.authorName,
+    item.authorHandle,
+    item.siteName,
+    item.sourceUrl,
+    analysis?.summary,
+    ...(analysis?.tags || []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
+
+function buildWebSourceGroups(items: SavedItem[]) {
+  const groups = new Map<string, SourceGroup>();
+
+  for (const item of items) {
+    if (item.sourceType !== "web") {
+      continue;
+    }
+
+    const key = getWebSourceKey(item);
+    if (!key) {
+      continue;
+    }
+
+    const current = groups.get(key);
+    if (current) {
+      current.count += 1;
+      continue;
+    }
+
+    const label = item.siteName?.trim() || key;
+    const subtitle = label === key ? undefined : key;
+    groups.set(key, { key, label, count: 1, subtitle });
+  }
+
+  return sortGroups(groups);
+}
+
+function buildTweetAuthorGroups(items: SavedItem[]) {
+  const groups = new Map<string, SourceGroup>();
+
+  for (const item of items) {
+    if (item.sourceType !== "tweet") {
+      continue;
+    }
+
+    const key = getTweetAuthorKey(item);
+    if (!key) {
+      continue;
+    }
+
+    const current = groups.get(key);
+    if (current) {
+      current.count += 1;
+      continue;
+    }
+
+    const label = item.authorHandle?.trim()
+      ? `@${item.authorHandle.trim()}`
+      : item.authorName?.trim() || "Unknown author";
+    groups.set(key, { key, label, count: 1 });
+  }
+
+  return sortGroups(groups);
+}
+
+function sortGroups(groups: Map<string, SourceGroup>) {
+  return Array.from(groups.values()).sort((a, b) => {
+    if (b.count !== a.count) {
+      return b.count - a.count;
+    }
+
+    return a.label.localeCompare(b.label, "en");
+  });
+}
+
+function getTweetAuthorKey(item: SavedItem) {
+  const handle = item.authorHandle?.trim().toLowerCase();
+  if (handle) {
+    return handle;
+  }
+
+  const name = item.authorName?.trim().toLowerCase();
+  return name || null;
+}
+
+function getWebSourceKey(item: SavedItem) {
+  return (
+    extractHostname(item.canonicalUrl) ||
+    extractHostname(item.sourceUrl) ||
+    item.siteName?.trim().toLowerCase() ||
+    null
+  );
+}
+
+function extractHostname(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname.startsWith("www.") ? hostname.slice(4) : hostname;
+  } catch {
+    return null;
+  }
 }
 
 function SectionList({ title, items }: { title: string; items: string[] }) {
