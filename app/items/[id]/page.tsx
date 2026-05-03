@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExpandableContent } from "@/components/expandable-content";
 import { readAnalysis, readAnalyzedAt } from "@/lib/item-analysis";
+import { extractReferencedLinks } from "@/lib/referenced-links";
 import {
   getUrlHost,
   isResourceLikeKind,
@@ -37,6 +38,7 @@ export default async function ItemDetailPage({
   const contentText = item.contentText?.trim() || null;
   const summaryText = item.summary?.trim() || null;
   const fullContent = contentText || summaryText;
+  const referencedLinks = extractReferencedLinks(item);
   const showSummary =
     Boolean(summaryText) && Boolean(contentText) && summaryText !== contentText;
   const aiSectionTitle = isResourceLike ? "AI analysis" : "AI summary";
@@ -199,6 +201,34 @@ export default async function ItemDetailPage({
               <p className="mt-4 text-sm text-zinc-500">No readable content yet.</p>
             )}
           </section>
+
+          {referencedLinks.length > 0 ? (
+            <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold text-zinc-950">
+                  Referenced links
+                </h2>
+                <span className="text-xs uppercase tracking-wide text-zinc-400">
+                  extracted from content
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3">
+                {referencedLinks.map((link) => (
+                  <a
+                    key={link.url}
+                    href={link.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-2xl border border-zinc-200 px-4 py-3 transition hover:border-zinc-300 hover:bg-zinc-50"
+                  >
+                    <div className="text-sm font-medium text-zinc-950">{link.label}</div>
+                    <div className="mt-1 break-all text-xs text-zinc-500">{link.url}</div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
 
         <aside className="flex min-w-0 flex-col gap-6">

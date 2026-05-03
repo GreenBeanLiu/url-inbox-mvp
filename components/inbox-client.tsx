@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { readAnalysis, readAnalyzedAt } from "@/lib/item-analysis";
+import { extractReferencedLinks } from "@/lib/referenced-links";
 import {
   getUrlHost,
   isResourceLikeKind,
@@ -541,6 +542,7 @@ export function InboxClient({
               const resource = readResourceClassification(item);
               const resourceKind = resource?.kind || null;
               const isResourceLike = isResourceLikeKind(resourceKind);
+              const referencedLinks = extractReferencedLinks(item);
               const webSourceKey = getWebSourceKey(item);
               const webSourceCount =
                 item.sourceType === "web" && webSourceKey
@@ -655,6 +657,26 @@ export function InboxClient({
                     {item.note ? (
                       <div className="rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
                         {item.note}
+                      </div>
+                    ) : null}
+
+                    {referencedLinks.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                          Referenced links
+                        </span>
+                        {referencedLinks.slice(0, 3).map((link) => (
+                          <a
+                            key={link.url}
+                            href={link.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex max-w-full items-center rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-200"
+                            title={link.url}
+                          >
+                            <span className="truncate">{link.label}</span>
+                          </a>
+                        ))}
                       </div>
                     ) : null}
 
