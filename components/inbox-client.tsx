@@ -1,14 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { SavedItem, ItemAnalysis, ItemStatus } from "@/lib/types";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { ItemStatus, SavedItem } from "@/lib/types";
+import { readAnalysis, readAnalyzedAt } from "@/lib/item-analysis";
 
 const statuses: ItemStatus[] = ["inbox", "later", "done", "archived"];
 
 export function InboxClient({
   initialItems,
+  initialTag,
 }: {
   initialItems: SavedItem[];
+  initialTag?: string | null;
 }) {
   const [items, setItems] = useState(initialItems);
   const [url, setUrl] = useState("");
@@ -18,19 +22,42 @@ export function InboxClient({
     "all",
   );
   const [statusFilter, setStatusFilter] = useState<"all" | ItemStatus>("all");
+  const [tagFilter, setTagFilter] = useState(initialTag || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setTagFilter(initialTag || "");
+  }, [initialTag]);
+
+  const availableTags = useMemo(() => {
+    return Array.from(
+      new Set(
+        items.flatMap((item) => readAnalysis(item)?.tags || []).filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "zh-CN"));
+  }, [items]);
+
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const normalizedTag = tagFilter.trim().toLowerCase();
 
     return items.filter((item) => {
+      const analysis = readAnalysis(item);
+
       if (sourceFilter !== "all" && item.sourceType !== sourceFilter) {
         return false;
       }
 
       if (statusFilter !== "all" && item.status !== statusFilter) {
+        return false;
+      }
+
+      if (
+        normalizedTag &&
+        !(analysis?.tags || []).some((tag) => tag.toLowerCase() === normalizedTag)
+      ) {
         return false;
       }
 
@@ -47,8 +74,8 @@ export function InboxClient({
         item.authorHandle,
         item.siteName,
         item.sourceUrl,
-        readAnalysis(item)?.summary,
-        ...(readAnalysis(item)?.tags || []),
+        analysis?.summary,
+        ...(analysis?.tags || []),
       ]
         .filter(Boolean)
         .join(" ")
@@ -56,7 +83,7 @@ export function InboxClient({
 
       return haystack.includes(q);
     });
-  }, [items, query, sourceFilter, statusFilter]);
+  }, [items, query, sourceFilter, statusFilter, tagFilter]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -228,7 +255,7 @@ export function InboxClient({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -236,34 +263,63 @@ export function InboxClient({
               className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 sm:col-span-2"
             />
 
-            <div className="grid grid-cols-2 gap-3">
-              <select
-                value={sourceFilter}
-                onChange={(event) =>
-                  setSourceFilter(event.target.value as "all" | "web" | "tweet")
-                }
-                className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-              >
-                <option value="all">All sources</option>
-                <option value="web">Web</option>
-                <option value="tweet">Tweet</option>
-              </select>
+            <select
+              value={sourceFilter}
+              onChange={(event) =>
+                setSourceFilter(event.target.value as "all" | "web" | "tweet")
+              }
+              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+            >
+              <option value="all">All sources</option>
+              <option value="web">Web</option>
+              <option value="tweet">Tweet</option>
+            </select>
 
-              <select
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as "all" | ItemStatus)
-                }
-                className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+            <select
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as "all" | ItemStatus)
+              }
+              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+            >
+              <option value="all">All status</option>
+              {statuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Tags
+            </span>
+            <button
+              type="button"
+              onClick={() => setTagFilter("")}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                !tagFilter
+                  ? "bg-violet-600 text-white"
+                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+              }`}
+            >
+              All
+            </button>
+            {availableTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setTagFilter(tag)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  tagFilter.toLowerCase() === tag.toLowerCase()
+                    ? "bg-violet-600 text-white"
+                    : "bg-violet-50 text-violet-700 hover:bg-violet-100"
+                }`}
               >
-                <option value="all">All status</option>
-                {statuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </div>
+                #{tag}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -276,6 +332,7 @@ export function InboxClient({
             filteredItems.map((item) => {
               const previewText = buildPreviewText(item);
               const analysis = readAnalysis(item);
+              const analyzedAt = readAnalyzedAt(item);
 
               return (
                 <article
@@ -306,19 +363,30 @@ export function InboxClient({
                   </div>
 
                   <div className="mt-3 flex flex-col gap-2">
-                    <a
-                      href={item.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-lg font-semibold tracking-tight text-zinc-950 hover:text-sky-700"
-                    >
-                      {item.title || item.sourceUrl}
-                    </a>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <a
+                          href={item.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-lg font-semibold tracking-tight text-zinc-950 hover:text-sky-700"
+                        >
+                          {item.title || item.sourceUrl}
+                        </a>
 
-                    <div className="text-sm text-zinc-500">
-                      {item.authorHandle
-                        ? `@${item.authorHandle}`
-                        : item.authorName || item.siteName || "Unknown source"}
+                        <div className="mt-1 text-sm text-zinc-500">
+                          {item.authorHandle
+                            ? `@${item.authorHandle}`
+                            : item.authorName || item.siteName || "Unknown source"}
+                        </div>
+                      </div>
+
+                      <Link
+                        href={`/items/${item.id}`}
+                        className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400"
+                      >
+                        Details
+                      </Link>
                     </div>
 
                     {previewText ? (
@@ -339,8 +407,15 @@ export function InboxClient({
 
                     {analysis ? (
                       <div className="mt-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-4 text-sm text-zinc-800">
-                        <div className="flex items-center justify-between gap-3">
-                          <h3 className="font-semibold text-zinc-950">AI analysis</h3>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h3 className="font-semibold text-zinc-950">AI analysis</h3>
+                            {analyzedAt ? (
+                              <p className="mt-1 text-xs text-zinc-500">
+                                analyzed {formatDateTime(analyzedAt)}
+                              </p>
+                            ) : null}
+                          </div>
                           <span className="text-xs text-zinc-500">
                             confidence {(analysis.confidence * 100).toFixed(0)}%
                           </span>
@@ -355,12 +430,14 @@ export function InboxClient({
                         {analysis.tags.length > 0 ? (
                           <div className="mt-3 flex flex-wrap gap-2">
                             {analysis.tags.map((tag) => (
-                              <span
+                              <button
                                 key={tag}
-                                className="rounded-full bg-white px-2.5 py-1 text-xs text-violet-700 ring-1 ring-violet-200"
+                                type="button"
+                                onClick={() => setTagFilter(tag)}
+                                className="rounded-full bg-white px-2.5 py-1 text-xs text-violet-700 ring-1 ring-violet-200 transition hover:bg-violet-100"
                               >
                                 #{tag}
-                              </span>
+                              </button>
                             ))}
                           </div>
                         ) : null}
@@ -375,7 +452,11 @@ export function InboxClient({
                       disabled={analyzingId === item.id || (!item.contentText && !item.summary)}
                       className="rounded-full border border-violet-300 px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:border-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {analyzingId === item.id ? "Analyzing..." : analysis ? "Re-analyze" : "Analyze"}
+                      {analyzingId === item.id
+                        ? "Analyzing..."
+                        : analysis
+                          ? "Re-analyze"
+                          : "Analyze"}
                     </button>
 
                     {statuses.map((status) => (
@@ -421,27 +502,6 @@ function buildPreviewText(item: SavedItem) {
   return trimmed.length > 700 ? `${trimmed.slice(0, 700)}…` : trimmed;
 }
 
-function readAnalysis(item: SavedItem): ItemAnalysis | null {
-  const maybeAnalysis = item.meta?.aiAnalysis;
-  if (!maybeAnalysis || typeof maybeAnalysis !== "object") {
-    return null;
-  }
-
-  const analysis = maybeAnalysis as Partial<ItemAnalysis>;
-  if (
-    typeof analysis.summary !== "string" ||
-    !Array.isArray(analysis.keyPoints) ||
-    !Array.isArray(analysis.insights) ||
-    !Array.isArray(analysis.actionItems) ||
-    !Array.isArray(analysis.tags) ||
-    typeof analysis.confidence !== "number"
-  ) {
-    return null;
-  }
-
-  return analysis as ItemAnalysis;
-}
-
 function SectionList({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) {
     return null;
@@ -457,4 +517,17 @@ function SectionList({ title, items }: { title: string; items: string[] }) {
       </ul>
     </div>
   );
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Shanghai",
+  }).format(date);
 }

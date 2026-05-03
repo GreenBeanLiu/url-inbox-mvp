@@ -3,8 +3,16 @@ import { InboxClient } from "@/components/inbox-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string | string[] }>;
+}) {
   const items = await listItems();
+  const resolvedSearchParams = await searchParams;
+  const initialTag = Array.isArray(resolvedSearchParams.tag)
+    ? resolvedSearchParams.tag[0] || null
+    : resolvedSearchParams.tag || null;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -21,7 +29,7 @@ export default async function Home() {
         </p>
       </header>
 
-      <InboxClient initialItems={items} />
+      <InboxClient initialItems={items} initialTag={initialTag} />
     </main>
   );
 }
