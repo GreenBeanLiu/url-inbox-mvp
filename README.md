@@ -7,7 +7,7 @@ A local-first MVP for saving URLs now and actually finding them later.
 - Import normal web pages
 - Import `x.com` / `twitter.com` status links
 - Normalize everything into one inbox
-- Store data locally in SQLite
+- Store data in Postgres via Prisma
 - Search and filter in the web UI
 - Update review status: `inbox`, `later`, `done`, `archived`
 
@@ -16,7 +16,7 @@ A local-first MVP for saving URLs now and actually finding them later.
 - Next.js App Router
 - React
 - Tailwind CSS
-- Prisma + SQLite (`prisma/dev.db`)
+- Prisma + Postgres (`DATABASE_URL`)
 - `cheerio` for basic web metadata extraction
 - TikHub API for tweet hydration
 
@@ -46,8 +46,9 @@ Without the token, tweet links will still be stored, but tweet detail fetch will
 
 ## Database
 
-- SQLite file: `prisma/dev.db`
+- Database connection: `DATABASE_URL`
 - Prisma schema: `prisma/schema.prisma`
+- Production target: Railway Postgres
 
 ## API
 
@@ -95,4 +96,4 @@ Request body:
 2. Add tags and item detail page
 3. Add browser extension / mobile share target
 4. Add digest and resurfacing workflow
-5. Move from SQLite to Postgres when multi-user support is needed
+5. Add auth and multi-user support once the single-user flow is stable

@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "Item" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "sourceType" TEXT NOT NULL,
     "sourceUrl" TEXT NOT NULL,
     "canonicalUrl" TEXT NOT NULL,
@@ -12,15 +12,17 @@ CREATE TABLE "Item" (
     "authorHandle" TEXT,
     "siteName" TEXT,
     "coverImageUrl" TEXT,
-    "publishedAt" DATETIME,
+    "publishedAt" TIMESTAMP(3),
     "note" TEXT,
     "status" TEXT NOT NULL,
     "fetchStatus" TEXT NOT NULL,
     "fetchError" TEXT,
     "rawPayload" JSONB,
     "meta" JSONB,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Item_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
