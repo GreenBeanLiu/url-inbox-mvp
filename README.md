@@ -52,7 +52,9 @@ Add your model config to `.env.local`:
 
 ```bash
 OPENAI_API_KEY=your_key_here
-AI_MODEL=gpt-4o-mini
+AI_MODEL=gpt-5.4-mini
+AI_REASONING_EFFORT=high
+AI_TEXT_VERBOSITY=high
 ```
 
 Optional for OpenAI-compatible providers:
@@ -60,6 +62,8 @@ Optional for OpenAI-compatible providers:
 ```bash
 OPENAI_BASE_URL=https://your-openai-compatible-endpoint/v1
 ```
+
+If your provider does not support reasoning controls or GPT-5.5, override these to a compatible model/settings.
 
 Analysis results are stored back onto the item in `meta.aiAnalysis`.
 

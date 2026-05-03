@@ -25,14 +25,24 @@ function getModel() {
     baseURL: process.env.OPENAI_BASE_URL || undefined,
   });
 
-  return provider.chat(process.env.AI_MODEL || "gpt-4o-mini");
+  return provider.chat(process.env.AI_MODEL || "gpt-5.4-mini");
+}
+
+function getReasoningEffort() {
+  return process.env.AI_REASONING_EFFORT || "high";
+}
+
+function getTextVerbosity() {
+  return process.env.AI_TEXT_VERBOSITY || "high";
 }
 
 export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
   console.error("[ai] analyze start", {
     itemId: item.id,
     sourceType: item.sourceType,
-    model: process.env.AI_MODEL || "gpt-4o-mini",
+    model: process.env.AI_MODEL || "gpt-5.4-mini",
+    reasoningEffort: getReasoningEffort(),
+    textVerbosity: getTextVerbosity(),
     baseURL: process.env.OPENAI_BASE_URL || null,
     hasApiKey: Boolean(process.env.OPENAI_API_KEY),
     apiKeyPrefix: process.env.OPENAI_API_KEY?.slice(0, 8) || null,
@@ -60,7 +70,8 @@ export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
   }
 
   const prompt = [
-    "Analyze this saved inbox item and return only valid JSON.",
+    "Analyze this saved inbox item carefully and return only valid JSON.",
+    "Think deeply before answering. Favor precision and non-obvious insights over speed.",
     "Do not wrap JSON in markdown fences.",
     "Do not add explanations before or after JSON.",
     "Output schema:",
@@ -75,10 +86,11 @@ export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
     "Requirements:",
     "- summary: 2-4 sentences in Chinese.",
     "- keyPoints: 1-5 concise Chinese bullets as strings.",
-    "- insights: 1-5 concise Chinese bullets as strings.",
-    "- actionItems: 0-5 concrete follow-up actions in Chinese.",
+    "- insights: 1-5 concise Chinese bullets as strings; prefer deeper takeaways, tensions, implications, and what actually matters.",
+    "- actionItems: 0-5 concrete follow-up actions in Chinese, specific to this item rather than generic advice.",
     "- tags: 0-8 short topical tags in Chinese or English.",
     "- confidence: a number between 0 and 1.",
+    "- Avoid generic filler. Read the entire provided content before deciding the answer.",
     "",
     content,
   ].join("\n");
@@ -89,9 +101,15 @@ export async function analyzeItem(item: SavedItem): Promise<ItemAnalysis> {
     const result = await generateText({
       model: getModel(),
       system:
-        "You analyze saved links and tweets for a personal inbox product. Return concise, practical Chinese output. You must return raw JSON only.",
+        "You analyze saved links and tweets for a personal inbox product. Read carefully, reason thoroughly, and return practical Chinese output. You must return raw JSON only.",
       prompt,
       temperature: 0.2,
+      providerOptions: {
+        openai: {
+          reasoningEffort: getReasoningEffort(),
+          textVerbosity: getTextVerbosity(),
+        },
+      },
     });
 
     text = result.text;
