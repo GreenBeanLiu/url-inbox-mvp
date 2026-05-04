@@ -5,6 +5,9 @@ export type ReferencedLink = {
   label: string;
 };
 
+const referenceCuePattern =
+  /(原文|来源|出处|相关文章|延伸阅读|参考|链接|link|links|source|sources|related|reference|references)/i;
+
 export function extractReferencedLinks(
   item: Pick<SavedItem, "contentText" | "summary" | "sourceUrl" | "canonicalUrl">,
 ) {
@@ -39,10 +42,15 @@ export function extractReferencedLinks(
         continue;
       }
 
+      const label = buildLinkLabel(lines, index, rawUrl, links.length + 1);
+      if (!label || !hasReferenceCue(lines, index, label)) {
+        continue;
+      }
+
       seen.add(normalizedUrl);
       links.push({
         url: rawUrl,
-        label: buildLinkLabel(lines, index, rawUrl, links.length + 1),
+        label,
       });
 
       if (links.length >= 6) {
@@ -80,6 +88,26 @@ function buildLinkLabel(
   }
 
   return `Referenced link ${order}`;
+}
+
+function hasReferenceCue(lines: string[], index: number, label: string) {
+  if (referenceCuePattern.test(label)) {
+    return true;
+  }
+
+  const currentLine = lines[index] || "";
+  if (referenceCuePattern.test(currentLine)) {
+    return true;
+  }
+
+  for (let offset = 1; offset <= 2; offset += 1) {
+    const previous = lines[index - offset]?.trim();
+    if (previous && referenceCuePattern.test(previous)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function cleanLabel(value: string) {
