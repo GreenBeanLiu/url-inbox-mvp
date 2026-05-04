@@ -368,14 +368,23 @@ export function InboxClient({
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-zinc-950">Quick add</h2>
-        <p className="mt-1 text-sm leading-6 text-zinc-600">
-          Paste a normal URL or an x.com / twitter.com status link.
-        </p>
+    <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)] xl:items-start">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm xl:sticky xl:top-8">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+              Quick add
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-zinc-600">
+              Save a normal page or an x.com / twitter.com status into the inbox.
+            </p>
+          </div>
+          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            Manual save
+          </span>
+        </div>
 
-        <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
           <label className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-zinc-900">URL</span>
@@ -390,7 +399,7 @@ export function InboxClient({
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              className="rounded-2xl border border-zinc-300 px-4 py-3 text-base text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+              className="h-12 rounded-2xl border border-zinc-300 bg-white px-4 text-base text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
             />
           </label>
 
@@ -404,15 +413,15 @@ export function InboxClient({
               onChange={(event) => setNote(event.target.value)}
               placeholder="Why are you saving this?"
               autoComplete="off"
-              className="rounded-xl border border-zinc-300 px-3 py-2.5 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+              className="h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
             />
           </label>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
             >
               Save URL
             </button>
@@ -420,7 +429,7 @@ export function InboxClient({
             <div className="min-h-5 text-sm text-zinc-500">
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
-                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-200 border-t-sky-600" />
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-700" />
                   Saving...
                 </span>
               ) : null}
@@ -429,24 +438,26 @@ export function InboxClient({
         </form>
 
         {notice ? (
-          <p className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700">
+          <p className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm text-sky-700">
             {notice}
           </p>
         ) : null}
 
         {error ? (
-          <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
             {error}
           </p>
         ) : null}
       </section>
 
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-zinc-200 pb-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-5 border-b border-zinc-200 pb-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-zinc-950">Inbox</h2>
-              <p className="text-sm text-zinc-600">
+              <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+                Inbox
+              </h2>
+              <p className="mt-1 text-sm text-zinc-600">
                 {filteredItems.length} of {items.length} items
               </p>
             </div>
@@ -455,7 +466,7 @@ export function InboxClient({
               <button
                 type="button"
                 onClick={() => setShowFilters((current) => !current)}
-                className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400"
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50"
               >
                 {showFilters ? "Hide filters" : "Show filters"}
               </button>
@@ -463,120 +474,124 @@ export function InboxClient({
           </div>
 
           {activeFilters.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                Active filters
-              </span>
-              {activeFilters.map((filter) => (
-                <span
-                  key={filter}
-                  className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700"
-                >
-                  {filter}
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  Active filters
                 </span>
-              ))}
-              <button
-                type="button"
-                onClick={clearAllFilters}
-                className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-200"
-              >
-                Clear all
-              </button>
+                {activeFilters.map((filter) => (
+                  <span
+                    key={filter}
+                    className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700"
+                  >
+                    {filter}
+                  </span>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+                >
+                  Clear all
+                </button>
+              </div>
             </div>
           ) : null}
 
           {showFilters ? (
-            <div className="flex flex-col gap-4">
-              <div className="grid gap-3 sm:grid-cols-4">
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search title, note, text..."
-                  className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 sm:col-span-2"
-                />
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4">
+              <div className="flex flex-col gap-4">
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search title, note, text..."
+                    className="h-10 rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 sm:col-span-2"
+                  />
 
-                <select
-                  value={sourceFilter}
-                  onChange={(event) =>
-                    setSourceFilter(event.target.value as "all" | "web" | "tweet")
-                  }
-                  className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                >
-                  <option value="all">All sources</option>
-                  <option value="web">Web</option>
-                  <option value="tweet">Tweet</option>
-                </select>
+                  <select
+                    value={sourceFilter}
+                    onChange={(event) =>
+                      setSourceFilter(event.target.value as "all" | "web" | "tweet")
+                    }
+                    className="h-10 rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  >
+                    <option value="all">All sources</option>
+                    <option value="web">Web</option>
+                    <option value="tweet">Tweet</option>
+                  </select>
 
-                <select
-                  value={statusFilter}
-                  onChange={(event) =>
-                    setStatusFilter(event.target.value as "all" | ItemStatus)
-                  }
-                  className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                >
-                  <option value="all">All status</option>
-                  {statuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(event) =>
+                      setStatusFilter(event.target.value as "all" | ItemStatus)
+                    }
+                    className="h-10 rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  >
+                    <option value="all">All status</option>
+                    {statuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                  Tags
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setTagFilter("")}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    !tagFilter
-                      ? "bg-violet-600 text-white"
-                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-                  }`}
-                >
-                  All
-                </button>
-                {availableTags.map((tag) => (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Tags
+                  </span>
                   <button
-                    key={tag}
                     type="button"
-                    onClick={() => setTagFilter(tag)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                      tagFilter.toLowerCase() === tag.toLowerCase()
-                        ? "bg-violet-600 text-white"
-                        : "bg-violet-50 text-violet-700 hover:bg-violet-100"
+                    onClick={() => setTagFilter("")}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      !tagFilter
+                        ? "border-violet-600 bg-violet-600 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100"
                     }`}
                   >
-                    #{tag}
+                    All
                   </button>
-                ))}
-              </div>
+                  {availableTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setTagFilter(tag)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                        tagFilter.toLowerCase() === tag.toLowerCase()
+                          ? "border-violet-600 bg-violet-600 text-white"
+                          : "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                      }`}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
 
-              <div className="grid gap-3 lg:grid-cols-2">
-                <GroupedSourceList
-                  title="Blog sources"
-                  emptyLabel="No web sources in this view."
-                  groups={webSourceGroups}
-                  activeKey={sourceGroupFilter.kind === "web" ? sourceGroupFilter.key : null}
-                  onSelect={(key) => toggleSourceGroup("web", key)}
-                />
-                <GroupedSourceList
-                  title="X authors"
-                  emptyLabel="No tweet authors in this view."
-                  groups={tweetAuthorGroups}
-                  activeKey={
-                    sourceGroupFilter.kind === "tweet" ? sourceGroupFilter.key : null
-                  }
-                  onSelect={(key) => toggleSourceGroup("tweet", key)}
-                />
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <GroupedSourceList
+                    title="Blog sources"
+                    emptyLabel="No web sources in this view."
+                    groups={webSourceGroups}
+                    activeKey={sourceGroupFilter.kind === "web" ? sourceGroupFilter.key : null}
+                    onSelect={(key) => toggleSourceGroup("web", key)}
+                  />
+                  <GroupedSourceList
+                    title="X authors"
+                    emptyLabel="No tweet authors in this view."
+                    groups={tweetAuthorGroups}
+                    activeKey={
+                      sourceGroupFilter.kind === "tweet" ? sourceGroupFilter.key : null
+                    }
+                    onSelect={(key) => toggleSourceGroup("tweet", key)}
+                  />
+                </div>
               </div>
             </div>
           ) : null}
         </div>
 
-        <div className="mt-5 flex flex-col gap-4">
+        <div className="mt-6 flex flex-col gap-4">
           {filteredItems.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-300 px-4 py-10 text-center text-sm text-zinc-500">
               No items yet.
@@ -604,7 +619,7 @@ export function InboxClient({
               return (
                 <article
                   key={item.id}
-                  className="rounded-2xl border border-zinc-200 p-4 transition hover:border-zinc-300"
+                  className="rounded-3xl border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 hover:shadow-sm"
                 >
                   <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
                     <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-zinc-700">
@@ -635,13 +650,13 @@ export function InboxClient({
                   </div>
 
                   <div className="mt-3 flex flex-col gap-2">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         <a
                           href={item.sourceUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-lg font-semibold tracking-tight text-zinc-950 hover:text-sky-700"
+                          className="text-lg font-semibold tracking-tight text-zinc-950 transition hover:text-sky-700"
                         >
                           {item.title || item.sourceUrl}
                         </a>
@@ -685,7 +700,7 @@ export function InboxClient({
 
                       <Link
                         href={`/items/${item.id}`}
-                        className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400"
+                        className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50"
                       >
                         Details
                       </Link>
@@ -702,7 +717,7 @@ export function InboxClient({
                     ) : null}
 
                     {item.note ? (
-                      <div className="rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-700">
                         {item.note}
                       </div>
                     ) : null}
@@ -732,7 +747,7 @@ export function InboxClient({
                     ) : null}
 
                     {analysis ? (
-                      <div className="mt-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-4 text-sm text-zinc-800">
+                      <div className="mt-2 rounded-2xl border border-violet-200 bg-violet-50/70 p-4 text-sm text-zinc-800">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <h3 className="font-semibold text-zinc-950">AI analysis</h3>
@@ -783,7 +798,7 @@ export function InboxClient({
                     ) : null}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-4">
                     <button
                       type="button"
                       onClick={() => analyzeItem(item.id)}
@@ -809,8 +824,8 @@ export function InboxClient({
                         disabled={deletingId === item.id}
                         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                           item.status === status
-                            ? "border-sky-600 bg-sky-600 text-white"
-                            : "border-zinc-300 text-zinc-700 hover:border-zinc-400"
+                            ? "border-zinc-950 bg-zinc-950 text-white"
+                            : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"
                         } disabled:cursor-not-allowed disabled:opacity-50`}
                       >
                         {status}
@@ -881,10 +896,12 @@ function GroupedSourceList({
   onSelect: (key: string) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3">
+    <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-zinc-950">{title}</h3>
-        <span className="text-xs text-zinc-500">{groups.length}</span>
+        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-zinc-500">
+          {groups.length}
+        </span>
       </div>
 
       {groups.length === 0 ? (
@@ -899,10 +916,10 @@ function GroupedSourceList({
                 key={group.key}
                 type="button"
                 onClick={() => onSelect(group.key)}
-                className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition ${
+                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
                   isActive
-                    ? "bg-sky-600 text-white"
-                    : "bg-white text-zinc-800 hover:bg-zinc-100"
+                    ? "border-zinc-950 bg-zinc-950 text-white"
+                    : "border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
                 }`}
               >
                 <span className="min-w-0">
@@ -912,7 +929,7 @@ function GroupedSourceList({
                   {group.subtitle ? (
                     <span
                       className={`block truncate text-xs ${
-                        isActive ? "text-sky-100" : "text-zinc-500"
+                        isActive ? "text-zinc-300" : "text-zinc-500"
                       }`}
                     >
                       {group.subtitle}
@@ -922,7 +939,7 @@ function GroupedSourceList({
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                     isActive
-                      ? "bg-white/15 text-white"
+                      ? "bg-white/10 text-white"
                       : "bg-zinc-100 text-zinc-700"
                   }`}
                 >
