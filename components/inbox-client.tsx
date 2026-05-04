@@ -8,6 +8,7 @@ import {
   getUrlHost,
   isResourceLikeKind,
   readResourceClassification,
+  type ResourceKind,
 } from "@/lib/resource";
 import { ItemStatus, SavedItem } from "@/lib/types";
 
@@ -25,6 +26,8 @@ type SourceGroup = {
   subtitle?: string;
 };
 
+type ResourceFilter = "all" | ResourceKind;
+
 export function InboxClient({
   initialItems,
   initialTag,
@@ -39,6 +42,7 @@ export function InboxClient({
   const [sourceFilter, setSourceFilter] = useState<"all" | "web" | "tweet">(
     "all",
   );
+  const [resourceFilter, setResourceFilter] = useState<ResourceFilter>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | ItemStatus>("all");
   const [tagFilter, setTagFilter] = useState(initialTag || "");
   const [sourceGroupFilter, setSourceGroupFilter] = useState<SourceGroupFilter>({
@@ -96,6 +100,7 @@ export function InboxClient({
         query: normalizedQuery,
         statusFilter,
         tagFilter: normalizedTag,
+        resourceFilter,
       }),
     );
   }, [items, normalizedQuery, normalizedTag, statusFilter]);
@@ -148,6 +153,10 @@ export function InboxClient({
       filters.push(`Status: ${statusFilter}`);
     }
 
+    if (resourceFilter !== "all") {
+      filters.push(`Kind: ${resourceFilter}`);
+    }
+
     if (tagFilter.trim()) {
       filters.push(`#${tagFilter.trim()}`);
     }
@@ -157,7 +166,15 @@ export function InboxClient({
     }
 
     return filters;
-  }, [activeGroupLabel, normalizedQuery, query, sourceFilter, statusFilter, tagFilter]);
+  }, [
+    activeGroupLabel,
+    normalizedQuery,
+    query,
+    resourceFilter,
+    sourceFilter,
+    statusFilter,
+    tagFilter,
+  ]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -170,6 +187,7 @@ export function InboxClient({
           query: normalizedQuery,
           statusFilter,
           tagFilter: normalizedTag,
+          resourceFilter,
         })
       ) {
         return false;
@@ -195,6 +213,7 @@ export function InboxClient({
     items,
     normalizedQuery,
     normalizedTag,
+    resourceFilter,
     sourceFilter,
     sourceGroupFilter,
     statusFilter,
@@ -209,9 +228,18 @@ export function InboxClient({
     );
   }
 
+  function selectResourceFilter(next: ResourceFilter) {
+    setResourceFilter(next);
+
+    if (next !== "all") {
+      setSourceFilter("web");
+    }
+  }
+
   function clearAllFilters() {
     setQuery("");
     setSourceFilter("all");
+    setResourceFilter("all");
     setStatusFilter("all");
     setTagFilter("");
     setSourceGroupFilter({ kind: "none" });
@@ -511,7 +539,7 @@ export function InboxClient({
           {showFilters ? (
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4">
               <div className="flex flex-col gap-4">
-                <div className="grid gap-3 sm:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-5">
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
@@ -544,6 +572,19 @@ export function InboxClient({
                         {status}
                       </option>
                     ))}
+                  </select>
+
+                  <select
+                    value={resourceFilter}
+                    onChange={(event) =>
+                      selectResourceFilter(event.target.value as ResourceFilter)
+                    }
+                    className="h-10 rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  >
+                    <option value="all">All kinds</option>
+                    <option value="article">Article</option>
+                    <option value="tool">Tool</option>
+                    <option value="workspace">Workspace</option>
                   </select>
                 </div>
 
@@ -636,9 +677,17 @@ export function InboxClient({
                       {item.sourceType}
                     </span>
                     {resourceKind ? (
-                      <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+                      <button
+                        type="button"
+                        onClick={() => selectResourceFilter(resourceKind)}
+                        className={`rounded-full px-2.5 py-1 transition ${
+                          resourceFilter === resourceKind
+                            ? "bg-amber-600 text-white"
+                            : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                        }`}
+                      >
                         {resourceKind}
-                      </span>
+                      </button>
                     ) : null}
                     <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
                       {item.status}
@@ -722,7 +771,7 @@ export function InboxClient({
                       </p>
                     ) : isResourceLike ? (
                       <p className="text-sm leading-6 text-zinc-500">
-                        Saved as a resource link. Open details for host context and AI analysis.
+                        Saved as a {resourceKind || "resource"} link. Open details for host context and AI analysis.
                       </p>
                     ) : null}
 
@@ -924,7 +973,7 @@ function buildPreviewText(item: SavedItem) {
     item.sourceType === "tweet"
       ? item.contentText || item.summary
       : isResourceLikeKind(resourceKind)
-        ? item.contentText || item.summary
+        ? item.summary || item.contentText
         : item.summary || item.contentText;
 
   if (!raw) {
@@ -936,7 +985,28 @@ function buildPreviewText(item: SavedItem) {
     return null;
   }
 
+  if (isResourceLikeKind(resourceKind) && isLikelyNoisyResourcePreview(trimmed)) {
+    return null;
+  }
+
   return trimmed.length > 700 ? `${trimmed.slice(0, 700)}…` : trimmed;
+}
+
+function isLikelyNoisyResourcePreview(text: string) {
+  const compact = text.replace(/\s+/g, " ");
+  const noisyMarkers = [
+    "window.__NUXT__",
+    "__NUXT__",
+    "serverRendered",
+    '"buildAssetsDir"',
+    '"cdnURL"',
+    '"public":',
+    '"triggerDuration"',
+  ];
+  const markerHits = noisyMarkers.filter((marker) => compact.includes(marker)).length;
+  const punctuationCount = (compact.match(/[{}[\]"]/g) || []).length;
+
+  return markerHits >= 1 || punctuationCount > Math.max(24, compact.length * 0.08);
 }
 
 function GroupedSourceList({
@@ -1017,10 +1087,12 @@ function matchesContextFilters(
     query,
     statusFilter,
     tagFilter,
+    resourceFilter,
   }: {
     query: string;
     statusFilter: "all" | ItemStatus;
     tagFilter: string;
+    resourceFilter: ResourceFilter;
   },
 ) {
   const analysis = readAnalysis(item);
@@ -1034,6 +1106,16 @@ function matchesContextFilters(
     !(analysis?.tags || []).some((tag) => tag.toLowerCase() === tagFilter)
   ) {
     return false;
+  }
+
+  if (resourceFilter !== "all") {
+    if (item.sourceType !== "web") {
+      return false;
+    }
+
+    if (readResourceClassification(item)?.kind !== resourceFilter) {
+      return false;
+    }
   }
 
   if (!query) {
