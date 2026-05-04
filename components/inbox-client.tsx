@@ -407,19 +407,28 @@ export function InboxClient({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)] xl:items-start">
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm xl:sticky xl:top-8">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 xl:sticky xl:top-8">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
               Quick add
             </h2>
             <p className="mt-1 text-sm leading-6 text-zinc-600">
-              Save a normal page or an x.com / twitter.com status into the inbox.
+              Save a normal page, an x.com status, or a WeChat article into the inbox.
             </p>
           </div>
           <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
             Manual save
           </span>
+        </div>
+
+        <div className="mt-4 sm:hidden">
+          <Link
+            href="/add"
+            className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-zinc-300 bg-zinc-50 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+          >
+            Open mobile quick add page
+          </Link>
         </div>
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
@@ -488,7 +497,7 @@ export function InboxClient({
         ) : null}
       </section>
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-5 border-b border-zinc-200 pb-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -539,7 +548,7 @@ export function InboxClient({
           {showFilters ? (
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4">
               <div className="flex flex-col gap-4">
-                <div className="grid gap-3 sm:grid-cols-5">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}

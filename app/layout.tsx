@@ -14,7 +14,16 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "URL Inbox MVP",
-  description: "Save web URLs and x.com tweets for later review.",
+  description: "Save web URLs, x.com tweets, and WeChat articles for later review.",
+  applicationName: "URL Inbox MVP",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "URL Inbox",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
@@ -26,6 +35,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

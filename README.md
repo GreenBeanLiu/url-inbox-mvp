@@ -9,6 +9,7 @@ A local-first MVP for saving URLs now and actually finding them later.
 - Normalize everything into one inbox
 - Store data in Postgres via Prisma
 - Search and filter in the web UI
+- Fast mobile capture via `/add`
 - Update review status: `inbox`, `later`, `done`, `archived`
 - Run AI analysis on saved items and store structured results
 
@@ -34,6 +35,8 @@ npm run dev
 ```
 
 Open <http://localhost:3000>
+
+Mobile-friendly quick capture is available at <http://localhost:3000/add>. It supports `?url=` and `?note=` prefills for future iOS Shortcut/share flows.
 
 ## TikHub setup
 
@@ -114,6 +117,7 @@ Run AI analysis for one item and persist the structured result into `meta.aiAnal
 
 - No auth or multi-user support
 - No browser extension yet
+- No native iOS app or share extension yet; v2 currently focuses on mobile web capture and PWA-style installability
 - No background queue yet; imports and AI analysis happen inline
 - Web extraction is metadata-first, not full article readability
 - Tweet normalization is intentionally defensive because TikHub payload shape may vary
