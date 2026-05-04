@@ -36,7 +36,9 @@ npm run dev
 
 Open <http://localhost:3000>
 
-Mobile-friendly quick capture is available at <http://localhost:3000/add>. It supports `?url=` and `?note=` prefills for future iOS Shortcut/share flows.
+Mobile-friendly quick capture is available at <http://localhost:3000/add>. It supports `?url=`, `?note=`, `?title=`, and `?text=` prefills for iOS Shortcut/share flows.
+
+A practical iPhone Shortcut pattern is: receive a shared URL or Safari page, build `/add?url=...&title=...&text=...`, then open that URL in Safari.
 
 ## TikHub setup
 

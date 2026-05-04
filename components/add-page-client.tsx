@@ -97,12 +97,12 @@ export function AddPageClient({
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
               Quick add
             </h1>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
+            <p className="mt-2 text-sm leading-6 text-zinc-700">
               Built for fast capture on iPhone. Paste a link, leave a note if needed,
               and save it into the inbox.
             </p>
           </div>
-          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-600">
             Mobile capture
           </span>
         </div>
@@ -145,7 +145,7 @@ export function AddPageClient({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-zinc-950 px-4 text-base font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex h-12 items-center justify-center rounded-2xl bg-sky-600 px-4 text-base font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
           >
             {isSubmitting ? "Saving..." : "Save URL"}
           </button>
@@ -184,11 +184,27 @@ export function AddPageClient({
         <h2 className="text-base font-semibold tracking-tight text-zinc-950">
           iPhone flow
         </h2>
-        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-zinc-600">
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-zinc-700">
           <li>Open this page from Safari and add it to your Home Screen.</li>
           <li>Use <code>/add?url=...</code> later for Shortcut-based prefills.</li>
           <li>Full inbox review still stays on the main page.</li>
         </ul>
+
+        <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+          <h3 className="text-sm font-semibold text-zinc-950">iPhone Shortcut share setup</h3>
+          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-zinc-700">
+            <li>Open the Shortcuts app and create a new shortcut.</li>
+            <li>Set it to receive <strong>URLs</strong> and <strong>Safari web pages</strong> from the share sheet.</li>
+            <li>Add a <strong>URL</strong> action that builds this link:</li>
+          </ol>
+          <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-700">
+            /add?url=[Shortcut Input]&title=[Name]&text=[Shortcut Input]
+          </div>
+          <p className="mt-3 text-sm leading-6 text-zinc-700">
+            Then use <strong>Open URLs</strong> to open that generated link in Safari. This lets you
+            share a page from iPhone into the quick-add form with the URL prefilled.
+          </p>
+        </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Link
