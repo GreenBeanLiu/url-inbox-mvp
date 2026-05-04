@@ -47,6 +47,7 @@ export function InboxClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<SavedItem | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -334,11 +335,19 @@ export function InboxClient({
     }
   }
 
-  async function removeItem(id: string) {
-    if (!window.confirm("Delete this saved item?")) {
+  function requestRemoveItem(item: SavedItem) {
+    setPendingDeleteItem(item);
+  }
+
+  function closeDeleteDialog() {
+    if (deletingId) {
       return;
     }
 
+    setPendingDeleteItem(null);
+  }
+
+  async function removeItem(id: string) {
     setError(null);
     setNotice(null);
     setDeletingId(id);
@@ -357,6 +366,7 @@ export function InboxClient({
       }
 
       setItems((current) => current.filter((item) => item.id !== id));
+      setPendingDeleteItem(null);
       setNotice("Deleted.");
     } catch (deleteError) {
       setError(
@@ -834,7 +844,7 @@ export function InboxClient({
 
                     <button
                       type="button"
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => requestRemoveItem(item)}
                       disabled={deletingId === item.id || analyzingId === item.id}
                       className="rounded-full border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:border-red-400 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -847,6 +857,53 @@ export function InboxClient({
           )}
         </div>
       </section>
+
+      {pendingDeleteItem ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-red-50 p-2 text-red-700">
+                <span className="block h-2.5 w-2.5 rounded-full bg-current" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg font-semibold tracking-tight text-zinc-950">
+                  Delete saved item?
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">
+                  This will remove the item from your inbox. You can’t undo this action.
+                </p>
+                <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3">
+                  <div className="truncate text-sm font-medium text-zinc-900">
+                    {pendingDeleteItem.title || pendingDeleteItem.sourceUrl}
+                  </div>
+                  <div className="mt-1 truncate text-xs text-zinc-500">
+                    {pendingDeleteItem.sourceUrl}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeDeleteDialog}
+                disabled={Boolean(deletingId)}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => removeItem(pendingDeleteItem.id)}
+                disabled={Boolean(deletingId)}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+              >
+                {deletingId === pendingDeleteItem.id ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
