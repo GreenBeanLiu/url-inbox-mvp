@@ -19,7 +19,7 @@ A local-first MVP for saving URLs now and actually finding them later.
 - Tailwind CSS
 - Prisma + Postgres (`DATABASE_URL`)
 - `cheerio` for basic web metadata extraction
-- TikHub API for tweet hydration
+- TikHub API for tweet hydration and WeChat MP article extraction
 - Vercel AI SDK for structured content analysis
 
 ## Getting started
@@ -45,6 +45,8 @@ TIKHUB_API_BASE_URL=https://api.tikhub.io
 ```
 
 Without the token, tweet links will still be stored, but tweet detail fetch will remain in placeholder/failed mode so you can wire the key later.
+
+If a saved URL is a `mp.weixin.qq.com` article and `TIKHUB_API_TOKEN` is present, imports will prefer TikHub's WeChat MP JSON article detail endpoint before falling back to normal HTML extraction.
 
 ## AI analysis setup
 
@@ -115,6 +117,7 @@ Run AI analysis for one item and persist the structured result into `meta.aiAnal
 - No background queue yet; imports and AI analysis happen inline
 - Web extraction is metadata-first, not full article readability
 - Tweet normalization is intentionally defensive because TikHub payload shape may vary
+- WeChat MP imports prefer TikHub JSON extraction when available, but still fall back to basic HTML extraction if TikHub is unavailable or fails
 - AI analysis currently requires a manual button click per item
 
 ## Suggested next steps

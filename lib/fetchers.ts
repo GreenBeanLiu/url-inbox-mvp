@@ -45,6 +45,13 @@ async function fetchWebItem(input: {
 }): Promise<SavedItem> {
   const now = new Date().toISOString();
 
+  if (isWechatMpUrl(input.sourceUrl)) {
+    const wechatItem = await fetchWechatMpItem(input);
+    if (wechatItem) {
+      return wechatItem;
+    }
+  }
+
   try {
     const response = await fetch(input.sourceUrl, {
       headers: {
@@ -149,6 +156,83 @@ async function fetchWebItem(input: {
       createdAt: input.existingCreatedAt ?? now,
       updatedAt: now,
     };
+  }
+}
+
+async function fetchWechatMpItem(input: {
+  id: string;
+  url: string;
+  note?: string;
+  sourceUrl: string;
+  canonicalUrl: string;
+  externalId: null;
+  existingCreatedAt?: string;
+}): Promise<SavedItem | null> {
+  const token = process.env.TIKHUB_API_TOKEN;
+  if (!token) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const baseUrl = process.env.TIKHUB_API_BASE_URL || "https://api.tikhub.io";
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/v1/wechat_mp/web/fetch_mp_article_detail_json?url=${encodeURIComponent(input.sourceUrl)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`TikHub fetch failed with HTTP ${response.status}`);
+    }
+
+    const payload = (await response.json()) as Record<string, unknown>;
+    const normalized = normalizeWechatMpPayload(payload, input.sourceUrl);
+    const canonicalUrl =
+      normalized.canonicalUrl || normalizeWechatMpCanonicalUrl(input.sourceUrl);
+    const resource = classifyWebResource({
+      sourceUrl: canonicalUrl,
+      title: normalized.title,
+      description: normalized.summary,
+      siteName: normalized.siteName,
+      contentText: normalized.contentText,
+    });
+
+    return {
+      id: input.id,
+      sourceType: "web",
+      sourceUrl: input.sourceUrl,
+      canonicalUrl,
+      externalId: null,
+      title: normalized.title,
+      summary: normalized.summary,
+      contentText: normalized.contentText,
+      authorName: normalized.authorName,
+      authorHandle: null,
+      siteName: normalized.siteName,
+      coverImageUrl: normalized.coverImageUrl,
+      publishedAt: normalized.publishedAt,
+      note: input.note?.trim() || null,
+      status: "inbox",
+      fetchStatus: "success",
+      fetchError: null,
+      rawPayload: payload,
+      meta: {
+        provider: "tikhub",
+        platform: "wechat-mp",
+        extractedWith: "tikhub-wechat-mp-json",
+        publishInfo: normalized.publishInfo,
+        resource,
+      },
+      createdAt: input.existingCreatedAt ?? now,
+      updatedAt: now,
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -263,6 +347,43 @@ async function fetchTweetItem(input: {
       updatedAt: now,
     };
   }
+}
+
+function normalizeWechatMpPayload(
+  payload: Record<string, unknown>,
+  fallbackUrl: string,
+) {
+  const data = unwrapData(payload);
+  const title = readString(data, ["title"]) || fallbackUrl;
+  const authorName = readString(data, ["author"]);
+  const siteName =
+    readString(data, ["publish_info", "source"]) || "WeChat Official Account";
+  const fullText = readString(data, ["content", "article", "full_text"]);
+  const summaryText = readString(data, ["content", "article", "summary"]);
+  const previewText = readString(data, ["content", "article", "preview_text"]);
+  const contentText = fullText || previewText || summaryText || null;
+  const summary = summaryText || summarizeText(contentText);
+  const coverImageUrl =
+    readString(data, ["content", "article", "images", 0, "src"]) ||
+    readString(data, ["content", "raw_content", 0, "image", "src"]) ||
+    null;
+  const publishedAt =
+    readString(data, ["publish_time"]) ||
+    readString(data, ["publish_at"]) ||
+    readString(data, ["datetime"]);
+  const publishInfo = readUnknown(data, ["publish_info"]);
+
+  return {
+    title,
+    summary,
+    contentText,
+    authorName,
+    siteName,
+    coverImageUrl,
+    publishedAt,
+    publishInfo,
+    canonicalUrl: normalizeWechatMpCanonicalUrl(fallbackUrl),
+  };
 }
 
 function normalizeTweetPayload(payload: Record<string, unknown>, tweetId: string) {
@@ -449,6 +570,46 @@ function pickUsefulTweetText(
     lowered.startsWith("https://t.co/");
 
   return looksLikeOnlyShortUrl ? null : normalized;
+}
+
+function isWechatMpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.hostname.toLowerCase() === "mp.weixin.qq.com";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeWechatMpCanonicalUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.hostname.toLowerCase() !== "mp.weixin.qq.com") {
+      return url.toString();
+    }
+
+    if (url.pathname.startsWith("/s/")) {
+      return `https://mp.weixin.qq.com${url.pathname}`;
+    }
+
+    const canonical = new URL("https://mp.weixin.qq.com/s");
+    for (const key of ["__biz", "mid", "idx", "sn"]) {
+      const param = url.searchParams.get(key);
+      if (param) {
+        canonical.searchParams.set(key, param);
+      }
+    }
+
+    if ([...canonical.searchParams.keys()].length > 0) {
+      canonical.searchParams.sort();
+      return canonical.toString();
+    }
+
+    url.searchParams.sort();
+    return url.toString();
+  } catch {
+    return value;
+  }
 }
 
 function buildTextPreview($: cheerio.CheerioAPI) {
