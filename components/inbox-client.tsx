@@ -132,6 +132,31 @@ export function InboxClient({
       ? `Source: ${match.label}`
       : `Author: ${match.label}`;
   }, [sourceGroupFilter, tweetAuthorGroups, webSourceGroups]);
+  const activeFilters = useMemo(() => {
+    const filters: string[] = [];
+
+    if (normalizedQuery) {
+      filters.push(`Query: ${query.trim()}`);
+    }
+
+    if (sourceFilter !== "all") {
+      filters.push(`Source: ${sourceFilter}`);
+    }
+
+    if (statusFilter !== "all") {
+      filters.push(`Status: ${statusFilter}`);
+    }
+
+    if (tagFilter.trim()) {
+      filters.push(`#${tagFilter.trim()}`);
+    }
+
+    if (activeGroupLabel) {
+      filters.push(activeGroupLabel);
+    }
+
+    return filters;
+  }, [activeGroupLabel, normalizedQuery, query, sourceFilter, statusFilter, tagFilter]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -181,6 +206,14 @@ export function InboxClient({
         ? { kind: "none" }
         : { kind, key },
     );
+  }
+
+  function clearAllFilters() {
+    setQuery("");
+    setSourceFilter("all");
+    setStatusFilter("all");
+    setTagFilter("");
+    setSourceGroupFilter({ kind: "none" });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -419,15 +452,6 @@ export function InboxClient({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {activeGroupLabel ? (
-                <button
-                  type="button"
-                  onClick={() => setSourceGroupFilter({ kind: "none" })}
-                  className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:bg-sky-100"
-                >
-                  {activeGroupLabel} ×
-                </button>
-              ) : null}
               <button
                 type="button"
                 onClick={() => setShowFilters((current) => !current)}
@@ -437,6 +461,29 @@ export function InboxClient({
               </button>
             </div>
           </div>
+
+          {activeFilters.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Active filters
+              </span>
+              {activeFilters.map((filter) => (
+                <span
+                  key={filter}
+                  className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700"
+                >
+                  {filter}
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-200"
+              >
+                Clear all
+              </button>
+            </div>
+          ) : null}
 
           {showFilters ? (
             <div className="flex flex-col gap-4">
