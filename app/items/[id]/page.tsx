@@ -39,18 +39,25 @@ export default async function ItemDetailPage({
   const summaryText = item.summary?.trim() || null;
   const fullContent = contentText || summaryText;
   const referencedLinks = extractReferencedLinks(item);
+  const lowQualityExtract = isLowQualityExtract(contentText);
   const showSummary =
     Boolean(summaryText) && Boolean(contentText) && summaryText !== contentText;
   const aiSectionTitle = isResourceLike ? "AI analysis" : "AI summary";
   const summarySectionTitle = isResourceLike ? "Saved preview" : "Summary";
-  const contentSectionTitle = isResourceLike ? "Saved details" : "Original content";
-  const contentSectionLabel = contentText
-    ? isResourceLike
-      ? "captured page text"
-      : "full extracted text"
+  const contentSectionTitle = lowQualityExtract
+    ? "Raw extract"
     : isResourceLike
-      ? "saved snippet"
-      : "saved summary";
+      ? "Saved details"
+      : "Original content";
+  const contentSectionLabel = lowQualityExtract
+    ? "low-quality captured text"
+    : contentText
+      ? isResourceLike
+        ? "captured page text"
+        : "full extracted text"
+      : isResourceLike
+        ? "saved snippet"
+        : "saved summary";
   const resourceDescription = buildResourceDescription(resourceKind, item.siteName);
 
   return (
@@ -194,9 +201,26 @@ export default async function ItemDetailPage({
             </div>
 
             {fullContent ? (
-              <div className="mt-5">
-                <ExpandableContent text={fullContent} />
-              </div>
+              lowQualityExtract ? (
+                <div className="mt-5">
+                  <p className="text-sm leading-7 text-zinc-500">
+                    This extract looks noisy or poorly formatted. Prefer the AI summary above or open the source page directly.
+                  </p>
+
+                  <details className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4">
+                    <summary className="cursor-pointer list-none text-sm font-medium text-zinc-700 marker:hidden">
+                      Show raw extracted text
+                    </summary>
+                    <div className="mt-4">
+                      <ExpandableContent text={fullContent} collapsedChars={1400} />
+                    </div>
+                  </details>
+                </div>
+              ) : (
+                <div className="mt-5">
+                  <ExpandableContent text={fullContent} />
+                </div>
+              )
             ) : (
               <p className="mt-4 text-sm text-zinc-500">No readable content yet.</p>
             )}
@@ -409,6 +433,31 @@ function formatDateTime(value: string) {
     timeStyle: "short",
     timeZone: "Asia/Shanghai",
   }).format(date);
+}
+
+function isLowQualityExtract(text: string | null) {
+  if (!text) {
+    return false;
+  }
+
+  const normalized = text.trim();
+  if (normalized.length < 280) {
+    return false;
+  }
+
+  const newlineCount = (normalized.match(/\n/g) || []).length;
+  const punctuationCount = (normalized.match(/[。！？.!?]/g) || []).length;
+  const denseUrlCount = (normalized.match(/https?:\/\//g) || []).length;
+  const suspiciousJoinCount =
+    (normalized.match(/[a-z0-9][A-Z][a-z]/g) || []).length +
+    (normalized.match(/[a-z][\u4e00-\u9fff]/g) || []).length +
+    (normalized.match(/[\u4e00-\u9fff][A-Za-z]/g) || []).length;
+
+  return (
+    newlineCount <= 1 &&
+    (suspiciousJoinCount >= 4 || denseUrlCount >= 1) &&
+    punctuationCount <= 12
+  );
 }
 
 function buildResourceDescription(
